@@ -42,6 +42,8 @@ A crowd-ranked, curated movie catalog where the scores and trailers make the bro
 
 No pre-existing brand, name, or assets. Established tone: casual, fun, social — a page for a group settling the movie-night debate.
 
+Visual direction pinned by the user: **modern dark-mode glassmorphism** (frosted glass panels over a deep dark gradient, one neon accent). This replaces the earlier darkroom and Googie worlds and is the standing look — do not re-roll or restyle without a new explicit instruction.
+
 ## Evidence on Hand
 
 - The curated catalog itself (movies.js) is the only real content; scores are hand-entered reference values.
