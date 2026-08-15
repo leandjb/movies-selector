@@ -70,10 +70,28 @@
 
     <section class="board" aria-labelledby="board-title">
       <div class="board__head glass">
-        <h2 id="board-title" class="board__title">The Shortlist</h2>
-        <p class="board__note" id="board-note" aria-live="polite">
-          Ranked by your votes.
-        </p>
+        <div class="board__headline">
+          <h2 id="board-title" class="board__title">The Shortlist</h2>
+          <p class="board__note" id="board-note" aria-live="polite">
+            Ranked by your votes.
+          </p>
+        </div>
+        <div class="board__tools">
+          <div class="budget" role="group" aria-label="Set your vote budget">
+            <span class="budget__label" id="budget-label">votes to give</span>
+            <button class="budget__btn" id="budget-minus" type="button" aria-label="Fewer votes">
+              <span aria-hidden="true">−</span>
+            </button>
+            <span class="budget__value" id="budget-value" aria-live="polite">10</span>
+            <button class="budget__btn" id="budget-plus" type="button" aria-label="More votes">
+              <span aria-hidden="true">+</span>
+            </button>
+            <span class="budget__remaining" id="budget-remaining" aria-live="polite"></span>
+          </div>
+          <button class="board__show-winner" id="show-winner" type="button">
+            <span aria-hidden="true">🎉</span> Show the winner
+          </button>
+        </div>
       </div>
       <ol id="movie-grid" class="menu" aria-label="Ranked movie shortlist"></ol>
     </section>

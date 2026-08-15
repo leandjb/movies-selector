@@ -6,42 +6,80 @@
    * ------------------------------------------------------------------ */
 
   const STORAGE_KEY = "movieVotes.v1";
+  const DEFAULT_BUDGET = 10;
+  const MIN_BUDGET = 1;
+  const MAX_BUDGET = 99;
 
-  // Per-movie user delta: { [movieId]: 1 | -1 | 0 }
-  let votes = loadVotes();
+  // Vote state: { budget: number, byId: { [movieId]: allocatedVotes } }
+  // The visitor decides how many votes they have (the budget) and then
+  // distributes them across movies with per-movie + / − counters.
+  let state = loadState();
+
+  function freshState() {
+    return { budget: DEFAULT_BUDGET, byId: {} };
+  }
 
   // Guarded localStorage read (spec: votes persist per browser; page must
-  // still work when storage is unavailable).
-  function loadVotes() {
+  // still work when storage is unavailable). The payload shape changed from
+  // the old toggle deltas — anything that isn't the new shape resets.
+  function loadState() {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-      const clean = {};
-      for (const [id, v] of Object.entries(parsed)) {
-        if (v === 1 || v === -1 || v === 0) clean[id] = v;
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (!parsed || typeof parsed !== "object" || !parsed.byId) {
+        return freshState();
       }
-      return clean;
+      const budget =
+        Number.isInteger(parsed.budget) &&
+        parsed.budget >= MIN_BUDGET &&
+        parsed.budget <= MAX_BUDGET
+          ? parsed.budget
+          : DEFAULT_BUDGET;
+      const byId = {};
+      if (parsed.byId && typeof parsed.byId === "object") {
+        for (const [id, v] of Object.entries(parsed.byId)) {
+          const n = Number(v);
+          if (Number.isInteger(n) && n > 0) byId[id] = n;
+        }
+      }
+      return { budget, byId };
     } catch {
-      return {};
+      return freshState();
     }
   }
 
-  function saveVotes() {
+  function saveState() {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(votes));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
       /* storage unavailable — votes just don't persist this session */
     }
   }
 
-  const netScore = (movie) => (movie.initialVotes || 0) + (votes[movie.id] || 0);
+  const allocated = (movie) => state.byId[movie.id] || 0;
+  const totalAllocated = () =>
+    Object.values(state.byId).reduce((sum, n) => sum + n, 0);
+  const remaining = () => state.budget - totalAllocated();
 
   const rankMovies = () =>
     [...MOVIES].sort(
-      (a, b) => netScore(b) - netScore(a) || (a.id < b.id ? -1 : 1)
+      (a, b) => allocated(b) - allocated(a) || (a.id < b.id ? -1 : 1)
     );
 
-  const maxVotes = () => Math.max(1, ...MOVIES.map((m) => netScore(m)));
+  const maxAllocated = () => Math.max(1, ...MOVIES.map((m) => allocated(m)));
+
+  // Lowering the budget below the allocated total trims votes, one from the
+  // movie with the most votes at a time (tie: first in catalog order), until
+  // the total fits — the cap is never violated.
+  function trimExcess() {
+    while (totalAllocated() > state.budget) {
+      const biggest = MOVIES.reduce((best, m) =>
+        allocated(m) > allocated(best) ? m : best
+      );
+      state.byId[biggest.id] -= 1;
+      if (state.byId[biggest.id] <= 0) delete state.byId[biggest.id];
+    }
+  }
 
   const esc = (s) =>
     String(s).replace(/[&<>"']/g, (c) => ({
@@ -78,16 +116,19 @@
   const heroPoster = document.getElementById("hero-winner-poster");
   const heroTitle = document.getElementById("hero-winner-title");
   const heroVotes = document.getElementById("hero-winner-votes");
+  const budgetValue = document.getElementById("budget-value");
+  const budgetRemaining = document.getElementById("budget-remaining");
 
   const ORBIT_C = 2 * Math.PI * 15.5; // circumference of the counter ring
 
   const scoreOrDash = (value) => (value == null ? "—" : value.toFixed(1));
 
   function cardHtml(movie, rank, share) {
-    const delta = votes[movie.id] || 0;
-    const score = netScore(movie);
+    const votes = allocated(movie);
     const hasTrailer = Boolean(movie.trailerWatchUrl);
     const isWinner = rank === 1;
+    const canInc = remaining() > 0;
+    const canDec = votes > 0;
 
     return `
       <li class="menu__card${isWinner ? " menu__card--winner" : ""}" data-id="${esc(movie.id)}">
@@ -122,29 +163,29 @@
         <div class="menu__vote">
           <div class="vote">
             <button
-              class="vote__btn vote__btn--up"
+              class="vote__btn vote__btn--dec"
               type="button"
               data-vote="${esc(movie.id)}"
-              data-direction="up"
-              aria-pressed="${delta === 1}"
-              aria-label="Upvote ${esc(movie.title)}"
-            ><span aria-hidden="true">+</span></button>
-            <button
-              class="vote__btn vote__btn--down"
-              type="button"
-              data-vote="${esc(movie.id)}"
-              data-direction="down"
-              aria-pressed="${delta === -1}"
-              aria-label="Downvote ${esc(movie.title)}"
+              data-direction="dec"
+              aria-label="Remove a vote from ${esc(movie.title)}"
+              ${canDec ? "" : "disabled"}
             ><span aria-hidden="true">−</span></button>
-          </div>
-          <div class="vote__counter" aria-hidden="true">
-            <svg viewBox="0 0 40 40">
-              <circle class="counter__track" cx="20" cy="20" r="15.5"></circle>
-              <circle class="counter__arc" cx="20" cy="20" r="15.5"
-                stroke-dasharray="${(share * ORBIT_C).toFixed(1)} ${ORBIT_C.toFixed(1)}"></circle>
-            </svg>
-            <span class="vote__score">${score}</span>
+            <div class="vote__counter" aria-hidden="true">
+              <svg viewBox="0 0 40 40">
+                <circle class="counter__track" cx="20" cy="20" r="15.5"></circle>
+                <circle class="counter__arc" cx="20" cy="20" r="15.5"
+                  stroke-dasharray="${(share * ORBIT_C).toFixed(1)} ${ORBIT_C.toFixed(1)}"></circle>
+              </svg>
+              <span class="vote__score">${votes}</span>
+            </div>
+            <button
+              class="vote__btn vote__btn--inc"
+              type="button"
+              data-vote="${esc(movie.id)}"
+              data-direction="inc"
+              aria-label="Add a vote to ${esc(movie.title)}"
+              ${canInc ? "" : "disabled"}
+            ><span aria-hidden="true">+</span></button>
           </div>
         </div>
       </li>`;
@@ -152,25 +193,30 @@
 
   function render({ focusMovieId, focusDirection } = {}) {
     const ranked = rankMovies();
-    const max = maxVotes();
+    const max = maxAllocated();
     grid.innerHTML = ranked
-      .map((m, i) => cardHtml(m, i + 1, netScore(m) / max))
+      .map((m, i) => cardHtml(m, i + 1, allocated(m) / max))
       .join("");
 
     // Re-renders (after votes) shouldn't replay the entrance animation.
     document.body.classList.add("has-voted");
+
+    // Budget readouts.
+    budgetValue.textContent = String(state.budget);
+    const left = remaining();
+    budgetRemaining.textContent = `${left} ${left === 1 ? "vote" : "votes"} left`;
 
     // Hero winner card: the leader's pane takes the glow.
     const leader = ranked[0];
     heroPoster.src = leader.posterUrl;
     heroPoster.alt = `${leader.title} poster`;
     heroTitle.textContent = leader.title;
-    heroVotes.textContent = `${netScore(leader)} votes · ${leader.year}`;
+    heroVotes.textContent = `${allocated(leader)} ${allocated(leader) === 1 ? "vote" : "votes"} · ${leader.year}`;
 
-    // Board note announces the winner (aria-live).
-    boardNote.textContent = `★ ${leader.title} is winning with ${netScore(leader)} votes.`;
+    // Board note announces the leader (aria-live).
+    boardNote.textContent = `★ ${leader.title} is winning with ${allocated(leader)} ${allocated(leader) === 1 ? "vote" : "votes"}.`;
 
-    // Restore focus to the button that cast the last vote.
+    // Restore focus to the control that cast the last vote.
     if (focusMovieId) {
       const card = grid.querySelector(`[data-id="${CSS.escape(focusMovieId)}"]`);
       const btn = card?.querySelector(
@@ -181,21 +227,71 @@
   }
 
   /* ------------------------------------------------------------------
-   * Voting
+   * Voting — budgeted allocation
    * ------------------------------------------------------------------ */
+
+  function setBudget(next) {
+    const clamped = Math.min(MAX_BUDGET, Math.max(MIN_BUDGET, Math.round(next)));
+    if (clamped === state.budget) return;
+    state.budget = clamped;
+    trimExcess(); // never let allocations exceed the (possibly lowered) budget
+    saveState();
+    render();
+  }
+
+  function addVote(movieId) {
+    if (remaining() <= 0) return; // budget is exhausted — extra vote not applied
+    state.byId[movieId] = (state.byId[movieId] || 0) + 1;
+    saveState();
+    render({ focusMovieId: movieId, focusDirection: "inc" });
+  }
+
+  function removeVote(movieId) {
+    if (!state.byId[movieId]) return;
+    state.byId[movieId] -= 1;
+    if (state.byId[movieId] <= 0) delete state.byId[movieId];
+    saveState();
+    render({ focusMovieId: movieId, focusDirection: "dec" });
+  }
 
   grid.addEventListener("click", (event) => {
     const btn = event.target.closest("[data-vote]");
     if (!btn) return;
-
     const movieId = btn.dataset.vote;
-    const direction = btn.dataset.direction === "up" ? 1 : -1;
-    const current = votes[movieId] || 0;
+    if (btn.dataset.direction === "inc") addVote(movieId);
+    else removeVote(movieId);
+  });
 
-    // Toggle semantics: repeat click removes the vote, opposite click swaps.
-    votes[movieId] = current === direction ? 0 : direction;
-    saveVotes();
-    render({ focusMovieId: movieId, focusDirection: btn.dataset.direction });
+  document.getElementById("budget-minus").addEventListener("click", () =>
+    setBudget(state.budget - 1)
+  );
+  document.getElementById("budget-plus").addEventListener("click", () =>
+    setBudget(state.budget + 1)
+  );
+
+  /* ------------------------------------------------------------------
+   * Winner celebration
+   * ------------------------------------------------------------------ */
+
+  const showWinnerBtn = document.getElementById("show-winner");
+  const reduceMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+
+  showWinnerBtn.addEventListener("click", () => {
+    const leader = rankMovies()[0];
+    const card = grid.querySelector(`[data-id="${CSS.escape(leader.id)}"]`);
+    if (!card) return;
+
+    card.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "center",
+    });
+
+    // Celebration moment: burst animation on the winner + announcement.
+    card.classList.add("celebrating");
+    boardNote.textContent = `🎉 ${leader.title} is the winner with ${allocated(leader)} ${allocated(leader) === 1 ? "vote" : "votes"}!`;
+    window.setTimeout(() => card.classList.remove("celebrating"), 2600);
   });
 
   /* ------------------------------------------------------------------

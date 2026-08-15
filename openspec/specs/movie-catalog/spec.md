@@ -1,4 +1,10 @@
-## MODIFIED Requirements
+# movie-catalog Specification
+
+## Purpose
+
+Displays a curated list of movies on the landing page, each showing its title, year, IMDb score, Rotten Tomatoes score, poster image, and a link to its YouTube trailer.
+
+## Requirements
 
 ### Requirement: Movie cards show full metadata
 The landing page SHALL render one card per movie in the catalog. Each card MUST display the movie's title, release year, IMDb score, Rotten Tomatoes score, and poster image. Each card's trailer control MUST be a link that opens the movie's YouTube trailer in a new tab; trailers MUST NOT require a modal, overlay, or in-page player.
@@ -15,7 +21,19 @@ The landing page SHALL render one card per movie in the catalog. Each card MUST 
 - **WHEN** a movie in the catalog has no trailer link
 - **THEN** the card still renders but does not show a trailer control
 
-## ADDED Requirements
+### Requirement: Poster images come from the catalog data
+The poster shown for each movie SHALL come from the poster image URL stored in the catalog data. If a poster fails to load, the card SHALL show a graceful fallback instead of a broken image.
+
+#### Scenario: Poster image fails to load
+- **WHEN** a movie's poster URL cannot be loaded
+- **THEN** the card displays a fallback placeholder in place of the poster
+
+### Requirement: Posters match their movies
+The poster shown for each movie SHALL be that movie's actual poster. Poster URLs in the catalog data SHALL be verified to depict the correct film before shipping.
+
+#### Scenario: Poster shows the correct film
+- **WHEN** a movie card renders
+- **THEN** the poster image is the actual poster of that movie
 
 ### Requirement: Catalog is the specified six-movie shortlist
 The catalog SHALL contain exactly these six movies: Her (2013), Project Hail Mary (2026), One Battle After Another (2025), Crimson Tide (1995), The Hot Chick (2002), and The Grand Budapest Hotel (2014).
@@ -38,16 +56,3 @@ When an IMDb or Rotten Tomatoes score is not available for a movie (for example 
 #### Scenario: Available scores render normally
 - **WHEN** a movie has a known score for a rating source
 - **THEN** that score renders as a number
-
-### Requirement: Posters match their movies
-The poster shown for each movie SHALL be that movie's actual poster. Poster URLs in the catalog data SHALL be verified to depict the correct film before shipping.
-
-#### Scenario: Poster shows the correct film
-- **WHEN** a movie card renders
-- **THEN** the poster image is the actual poster of that movie
-
-## REMOVED Requirements
-
-### Requirement: Trailer plays in an in-page modal
-**Reason**: The in-page modal player was unreliable in practice; the user requires trailers to open as direct YouTube links.
-**Migration**: The trailer control now opens the movie's YouTube watch URL in a new tab (`target="_blank"`).

@@ -10,17 +10,21 @@
 - [x] 2.2 Resolve and verify poster URLs (TMDB page `og:image`, confirmed 200) for all six films
 - [x] 2.3 Resolve and verify trailer IDs (YouTube oEmbed) for each film; leave trailer fields null where none exists
 - [x] 2.4 Curate IMDb/RT scores; set `null` (renders "—" placeholder) for any unavailable score
+- [x] 2.5 Re-verify and replace the poster URLs for The Hot Chick (2002) and Crimson Tide (1995): resolve the correct film's poster (TMDB/Wikipedia), verify it depicts the right movie and returns 200
 
 ## 3. Glass layout & style
 
 - [x] 3.1 Rebuild `index.html`: hero + board in the glass world, remove the trailer modal markup entirely
 - [x] 3.2 Rewrite `styles.css`: frosted glass panels with backdrop blur, glow accents, responsive grid, `prefers-reduced-motion`, `backdrop-filter` fallback
 
-## 4. Voting counter & winner
+## 4. Voting — budget, allocation, celebration (rework)
 
-- [x] 4.1 Render a prominent vote counter per card (net score) that updates live on every vote
-- [x] 4.2 Mark the top-ranked movie as winner: winner class + accent glow + "WINNER" chip, following the leader live (deterministic id tie-break)
-- [x] 4.3 Announce the current winner in the board note (aria-live), updating with votes
+- [x] 4.0 Shipped on the toggle model (superseded by the rework below): net-score counter + live winner highlight
+- [x] 4.1 Build the vote budget section: a control where the visitor sets the total number of votes to distribute, with an available-votes readout
+- [x] 4.2 Per-movie counters with + / − controls that allocate/return votes within the budget; counters update live
+- [x] 4.3 Enforce the cap: total allocated never exceeds the budget; lowering the budget trims excess allocations
+- [x] 4.4 Keep the live winner highlight (most allocated votes): winner class + accent glow + "WINNER" chip, following the leader; aria-live board note
+- [x] 4.5 Add the Show Winner button that reveals the winner with a dynamic celebration animation (respects `prefers-reduced-motion`)
 
 ## 5. Trailer links
 

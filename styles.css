@@ -285,9 +285,22 @@ body {
   padding: 1rem 1.4rem;
   border-radius: 18px;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.board__headline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.board__tools {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
   flex-wrap: wrap;
 }
 
@@ -305,6 +318,93 @@ body {
   color: var(--text-muted);
   font-style: italic;
   font-size: 0.95rem;
+}
+
+/* ---------------- Vote budget + show-winner ---------------- */
+
+.budget {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+}
+
+.budget__label {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.budget__btn {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease),
+    box-shadow 0.2s var(--ease);
+}
+
+.budget__btn:hover {
+  color: var(--accent);
+  border-color: rgba(62, 225, 255, 0.5);
+}
+
+.budget__btn:active {
+  box-shadow: 0 0 14px rgba(62, 225, 255, 0.4);
+}
+
+.budget__value {
+  min-width: 2.4rem;
+  text-align: center;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.35rem;
+  color: var(--accent);
+  text-shadow: 0 0 14px rgba(62, 225, 255, 0.55);
+}
+
+.budget__remaining {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.board__show-winner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.72rem 1.2rem;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  color: var(--accent-ink);
+  background: linear-gradient(180deg, #6ff0ff, var(--accent));
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  box-shadow: 0 0 22px rgba(62, 225, 255, 0.35);
+  cursor: pointer;
+  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+
+.board__show-winner:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 34px rgba(62, 225, 255, 0.55);
 }
 
 .menu {
@@ -508,7 +608,7 @@ body {
   border-top: 1px solid var(--glass-line);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 0.6rem;
 }
 
@@ -541,12 +641,15 @@ body {
   border-color: rgba(62, 225, 255, 0.5);
 }
 
-/* active vote snaps into the accent */
-.vote__btn[aria-pressed="true"] {
-  color: var(--accent-ink);
-  background: linear-gradient(180deg, #6ff0ff, var(--accent));
-  border-color: rgba(255, 255, 255, 0.35);
-  box-shadow: 0 0 18px rgba(62, 225, 255, 0.5);
+/* spent / empty controls quiet down */
+.vote__btn:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.vote__btn:disabled:hover {
+  color: var(--text);
+  border-color: var(--glass-border);
 }
 
 /* the counter: frosted ring + accent digits */
@@ -646,6 +749,57 @@ body.has-voted .menu__card--winner {
   animation: winner-pulse 2.8s ease-in-out infinite alternate;
 }
 
+/* celebration moment on the winner: burst + drifting confetti specks */
+body.has-voted .menu__card--winner.celebrating,
+.menu__card--winner.celebrating {
+  animation: winner-pulse 2.8s ease-in-out infinite alternate,
+    celebrate-burst 2.6s var(--ease) both;
+}
+
+.menu__card--winner.celebrating::after {
+  content: "";
+  position: absolute;
+  inset: -16px;
+  border-radius: 26px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 22% 28%, rgba(62, 225, 255, 0.55) 0 3px, transparent 4px),
+    radial-gradient(circle at 68% 12%, rgba(255, 255, 255, 0.6) 0 2px, transparent 3px),
+    radial-gradient(circle at 86% 58%, rgba(62, 225, 255, 0.5) 0 3px, transparent 4px),
+    radial-gradient(circle at 30% 84%, rgba(255, 255, 255, 0.45) 0 2px, transparent 3px),
+    radial-gradient(circle at 52% 38%, rgba(62, 225, 255, 0.4) 0 2px, transparent 3px);
+  animation: confetti-fly 2.6s var(--ease) both;
+}
+
+@keyframes celebrate-burst {
+  0% {
+    transform: scale(1);
+  }
+  14% {
+    transform: scale(1.04);
+  }
+  38% {
+    transform: scale(1.015);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes confetti-fly {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.8);
+  }
+  22% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(1.08);
+  }
+}
+
 /* ---------------- Responsive ---------------- */
 
 @media (max-width: 1020px) {
@@ -688,7 +842,17 @@ body.has-voted .menu__card--winner {
 
   .board__head {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+  }
+
+  .board__tools {
+    align-items: stretch;
+  }
+
+  .budget,
+  .board__show-winner {
+    flex: 1;
+    justify-content: center;
   }
 
   .hero__winner {
