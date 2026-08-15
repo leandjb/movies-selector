@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Pickup Counter — Vote for tonight's feature</title>
+  <meta
+    name="description"
+    content="A curated shortlist of great movies ranked by your votes. Browse posters, peek scores, watch trailers, and settle movie night."
+  >
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Staatliches&family=Yellowtail&display=swap"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="styles.css">
+  <script src="movies.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+<!--
+  THESIS: A movie-night shortlist as a Googie diner menu board — the ranked catalog is a menu, votes are punched tickets, and the starburst sign is the liveliest object on the page; it refuses the dark streaming-grid landing page.
+  OWN-WORLD: turquoise + coral counter laminate, chrome trim, charcoal boomerang speckle, neon starburst white for active states; Yellowtail script for feature names, Staatliches slab caps for titles, Archivo for body.
+  STORY: Friends land, see the night's shortlist ranked like a menu, browse posters and scores in orbit badges, watch trailers in the booth, and cast votes that re-order the board.
+  FIRST VIEWPORT: a swooping cantilever chrome band with a spinning starburst sign; "Tonight's shortlist" in script over slab caps; the ranked menu board begins immediately below, rank plates and score badges riding atomic orbits.
+  FORM: Googie starburst diner (challenger, concept roll 9f97526f), raised with the acetate manual's spatial-rank discipline: vote extent renders as an orbit arc and active votes snap into the starburst.
+  FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+-->
+  <a class="skip-link" href="#movie-grid">Skip to the menu board</a>
+
+  <header class="site-head">
+    <div class="site-head__inner">
+      <a class="brand" href="#top" aria-label="The Pickup Counter — home">
+        <svg class="brand__sign" viewBox="0 0 64 64" aria-hidden="true">
+          <path
+            d="M32 2l6.4 17.6L56 13.2l-8 16.8L56 46.8 38.4 44.4 32 62l-6.4-17.6L8 46.8l8-16.8L8 13.2l17.6 6.4z"
+            fill="currentColor"
+          />
+          <circle cx="32" cy="31" r="6" fill="#f6f1e6" />
+        </svg>
+        <span class="brand__name">The Pickup Counter</span>
+      </a>
+      <p class="site-head__tag">movie night, settled&nbsp;★</p>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero__sign" aria-hidden="true">
+        <svg class="starburst starburst--hero" viewBox="0 0 200 200">
+          <g class="starburst__spin">
+            <path
+              d="M100 4l8 70 62-34-34 62 70 8-70 8 34 62-62-34-8 70-8-70-62 34 34-62-70-8 70-8-34-62 62 34z"
+              fill="#ff6b57"
+            />
+            <circle cx="100" cy="100" r="26" fill="#f6f1e6" />
+            <text x="100" y="108" text-anchor="middle" class="starburst__text">A1</text>
+          </g>
+          <circle class="starburst__orbit" cx="100" cy="100" r="74" />
+        </svg>
+      </div>
+
+      <div class="hero__copy">
+        <p class="hero__kicker">★ the special ★</p>
+        <h1 id="hero-title" class="hero__script">Tonight's shortlist</h1>
+        <p class="hero__slab">VOTE FOR THE FEATURE · RANKS LIVE AS YOU VOTE</p>
+        <p class="hero__lede">
+          Fifteen great movies. One night. Your votes decide the order — browse
+          the posters, peek the scores, watch a trailer in the booth, then
+          punch your ticket.
+        </p>
+        <a class="hero__cta" href="#movie-grid">
+          <span class="hero__cta-star" aria-hidden="true">★</span>
+          Hit the menu board
+        </a>
+      </div>
+
+      <div class="hero__swoop" aria-hidden="true">
+        <span class="hero__swoop-copy">now showing · all night · now showing</span>
+      </div>
+    </section>
+
+    <section class="board" aria-labelledby="board-title">
+      <div class="board__head">
+        <h2 id="board-title" class="board__title">The Menu Board</h2>
+        <p class="board__note" id="board-note" aria-live="polite">
+          Ranked by your votes — tap ★ to punch a ticket.
+        </p>
+      </div>
+      <ol id="movie-grid" class="menu" aria-label="Ranked movie shortlist"></ol>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="site-foot__inner">
+      <span class="site-foot__sign" aria-hidden="true">★</span>
+      <p>
+        Scores are hand-curated · votes live in your browser · no accounts, no
+        nonsense
+      </p>
+    </div>
+  </footer>
+
+  <div
+    class="booth"
+    id="trailer-booth"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="booth-title"
+    hidden
+  >
+    <div class="booth__backdrop" data-booth-close></div>
+    <div class="booth__frame">
+      <div class="booth__bar">
+        <p class="booth__title" id="booth-title">Trailer booth</p>
+        <button
+          class="booth__close"
+          type="button"
+          data-booth-close
+          aria-label="Close trailer"
+        >
+          <span aria-hidden="true">✕</span>
+        </button>
+      </div>
+      <div class="booth__stage">
+        <iframe
+          id="booth-iframe"
+          class="booth__iframe"
+          title="Movie trailer"
+          loading="lazy"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+        ></iframe>
+        <div class="booth__fallback" id="booth-fallback" hidden>
+          <p>This trailer can't play in the booth.</p>
+        </div>
+      </div>
+      <div class="booth__foot">
+        <a
+          class="booth__watch"
+          id="booth-watch"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Watch on YouTube ↗</a
+        >
+      </div>
+    </div>
+  </div>
+</body>
+</html>
