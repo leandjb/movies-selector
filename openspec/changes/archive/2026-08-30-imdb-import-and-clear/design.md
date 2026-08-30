@@ -20,9 +20,9 @@ A static page — no server, no build step, no frameworks. `app.js` renders card
 
 ## Decisions
 
-### D1 — Data source: `api.imdbapi.dev`, single strategy
-`GET https://api.imdbapi.dev/titles/{ttId}` (keyless, CORS-friendly) normalized defensively into `{ id, title, year, rating, posterUrl }` — `primaryTitle` (fallback `originalTitle`), `startYear` (fallback `releaseDate` prefix), `rating.aggregateRating`, `primaryImage.url`. Any missing field renders as the existing `—` placeholder.
-*Alternatives*: IMDb direct/suggestion API — no CORS (verified) and no rating; OMDb — requires an account key, violating the page's "no accounts" identity; CORS-proxy scraping — flaky third-party chain and parser-heavy. A proxy fallback (exploration option C) stays addable later because all network code is isolated in one module (D3).
+### D1 — Data source: `api.imdbapi.dev` primary, IMDb-page JSON-LD fallback
+`GET https://api.imdbapi.dev/titles/{ttId}` (keyless, CORS-friendly) normalized into `{ id, title, year, rating, posterUrl }`. The live response uses IMDb-style **nested** fields — `titleText.text` / `originalTitleText.text`, `startYear` or `releaseDate.year` (an object), `ratings.aggregateRating` (plural key), `primaryImage.url` — with legacy flat fields (`primaryTitle`, `title`, `imDbRating`, `image`) kept as normalization fallbacks. `fetchTitle` runs a **provider chain**: if the API is unreachable, returns an error, or yields no usable fields, the same data is read from IMDb's own title-page `<script type="application/ld+json">` block (`name`, `image`, `datePublished`, `aggregateRating.ratingValue`) fetched through public CORS proxies (allorigins raw, then corsproxy.io). A response with all fields null counts as a provider failure and moves the chain on. Any missing field still renders as the existing `—` placeholder.
+*Alternatives*: IMDb direct/suggestion API — no CORS (verified) and no rating; OMDb — requires an account key, violating the page's "no accounts" identity. The proxy fallback was previously deferred as "addable later"; browser testing showed the primary alone was not enough, so it was added.
 
 ### D2 — One pipeline, two entrances
 `board.addFromText(raw)` is the only way cards enter the board: extract tt-IDs (tolerant, order-preserving) → dedupe within the input → dedupe against the board → cap to free slots → create placeholder cards synchronously → hydrate asynchronously → persist. The paste field calls it with one line; the TXT import with the whole file. Both report through the same summary channel. Duplicate detection happens at ID level, so rapid resubmits can't slip past while a fetch is in flight.
@@ -55,8 +55,9 @@ The new "Add movies" toolbar is a glass panel between the board head and the gri
 
 ## Risks / Trade-offs
 
-- [api.imdbapi.dev down, rate-limited, or unreachable from the user's network] → Cards still appear instantly and the board remains votable with placeholders; the spike task (T1) verifies reachability and response shape before UI work; D1's module boundary keeps a proxy fallback cheap to add later.
-- [API response shape drift] → Normalization reads every field with fallbacks and renders `—` for anything missing; a shape failure can only degrade a card, never crash the page.
+- [api.imdbapi.dev down, rate-limited, or unreachable from the user's network] → `fetchTitle` moves down the provider chain to IMDb's page JSON-LD via CORS proxies; cards still appear instantly and the board remains votable with placeholders if everything fails.
+- [API response shape drift] → Normalization reads the documented nested shape plus legacy flat fallbacks; a usable-field check treats an all-null payload as a provider failure and tries the next provider. A total failure can only degrade a card to placeholders, never crash the page or fabricate data.
+- [Public CORS proxies (allorigins/corsproxy) are third-party and occasionally flaky] → They are the fallback, not the primary; each is tried in turn and IMDb may still 403 a proxy intermittently — the card then shows placeholders and auto-retries on the next page load.
 - [Scrim-modal focus edge cases (screen readers, Tab cycling)] → Follow the standard trap-and-restore pattern with Esc/backdrop/cancel; covered in the integration test for the modal wiring.
 - [Large TXT files (thousands of lines)] → Parsing caps work at free slots after dedupe; scanning is a single linear pass, no per-line DOM work.
 - [Users expect bare `tt…` IDs or non-English IMDb domains to work] → Parser accepts any subdomain/scheme of imdb.com title URLs only; the error message explains the accepted format. Spec-true and unambiguous.
@@ -67,4 +68,4 @@ No server deploy — replace `index.html`/`styles.css`/`app.js` contents, add `i
 
 ## Open Questions
 
-None blocking. The only unknown — the live response shape of `api.imdbapi.dev` — is answered by the first implementation task (connectivity spike) before any UI is built.
+None blocking. The live response shape is now confirmed from the provider's published documentation (nested IMDb-style fields) and the normalizer covers it plus legacy shapes. The sandbox still cannot reach the API, so a one-time in-browser check of the full chain (paste a link → card fills) is the remaining human verification step.

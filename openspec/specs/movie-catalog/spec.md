@@ -21,20 +21,6 @@ The landing page SHALL render one card per movie in the catalog. Each card MUST 
 - **WHEN** a movie in the catalog has no trailer link
 - **THEN** the card still renders but does not show a trailer control
 
-### Requirement: Poster images come from the catalog data
-The poster shown for each movie SHALL come from the poster image URL stored in the catalog data. If a poster fails to load, the card SHALL show a graceful fallback instead of a broken image.
-
-#### Scenario: Poster image fails to load
-- **WHEN** a movie's poster URL cannot be loaded
-- **THEN** the card displays a fallback placeholder in place of the poster
-
-### Requirement: Posters match their movies
-The poster shown for each movie SHALL be that movie's actual poster. Poster URLs in the catalog data SHALL be verified to depict the correct film before shipping.
-
-#### Scenario: Poster shows the correct film
-- **WHEN** a movie card renders
-- **THEN** the poster image is the actual poster of that movie
-
 ### Requirement: Catalog is the specified six-movie shortlist
 The catalog SHALL contain exactly these six movies: Her (2013), Project Hail Mary (2026), One Battle After Another (2025), Crimson Tide (1995), The Hot Chick (2002), and The Grand Budapest Hotel (2014).
 
@@ -45,6 +31,24 @@ The catalog SHALL contain exactly these six movies: Her (2013), Project Hail Mar
 #### Scenario: No movies outside the roster
 - **WHEN** the landing page renders
 - **THEN** no movie outside the six-film roster appears
+
+### Requirement: Poster images come from the catalog data
+The poster shown for each movie SHALL come from the poster image URL in the fetched IMDb data for that movie. If a poster fails to load, the card SHALL show a graceful fallback instead of a broken image.
+
+#### Scenario: Poster image fails to load
+- **WHEN** a movie's poster URL cannot be loaded
+- **THEN** the card displays a fallback placeholder in place of the poster
+
+#### Scenario: Poster not yet loaded
+- **WHEN** a movie card exists but its poster URL is not yet available
+- **THEN** the card shows a placeholder poster instead of a broken image
+
+### Requirement: Posters match their movies
+The poster shown for each movie SHALL be that movie's actual poster. Poster URLs in the catalog data SHALL be verified to depict the correct film before shipping.
+
+#### Scenario: Poster shows the correct film
+- **WHEN** a movie card renders
+- **THEN** the poster image is the actual poster of that movie
 
 ### Requirement: Missing scores show a placeholder
 When an IMDb or Rotten Tomatoes score is not available for a movie (for example an unreleased title), the card SHALL show a placeholder and MUST NOT display a fabricated number.

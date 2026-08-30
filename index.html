@@ -15,7 +15,8 @@
     rel="stylesheet"
   >
   <link rel="stylesheet" href="styles.css">
-  <script src="movies.js" defer></script>
+  <script src="imdb.js" defer></script>
+  <script src="board.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -46,10 +47,10 @@
         <h1 id="hero-title" class="hero__title">Tonight's shortlist</h1>
         <p class="hero__slab">VOTES RANK THE BOARD · THE WINNER TAKES THE NIGHT</p>
         <p class="hero__lede">
-          Peek the scores, watch a trailer, then cast your vote. The leader's
-          pane glows — and the film with the most votes wins the night.
+          Paste an IMDb link or import a .txt of links, then cast your vote.
+          The leader's pane glows — and the film with the most votes wins the night.
         </p>
-        <a class="hero__cta" href="#movie-grid">Start voting</a>
+        <a class="hero__cta" href="#movie-grid">Build the shortlist</a>
       </div>
 
       <aside class="hero__winner glass" aria-live="polite" aria-label="Currently winning">
@@ -93,14 +94,60 @@
           </button>
         </div>
       </div>
+
+      <div class="adder glass" aria-label="Add movies to the shortlist">
+        <form class="adder__form" id="adder-form">
+          <label class="adder__label" for="imdb-input">IMDb link</label>
+          <input
+            class="adder__input"
+            id="imdb-input"
+            type="text"
+            inputmode="url"
+            placeholder="Paste an IMDb link, e.g. https://www.imdb.com/title/tt0118881/"
+            autocomplete="off"
+          >
+          <button class="adder__add" id="adder-add" type="submit">Add</button>
+        </form>
+        <div class="adder__tools">
+          <label class="adder__file" id="file-label">
+            Import .txt
+            <input id="txt-input" type="file" accept=".txt,text/plain" hidden>
+          </label>
+          <span class="adder__count" id="board-count" aria-live="polite">0 / 9</span>
+          <button class="adder__clear" id="clear-all" type="button" disabled>Clear all</button>
+        </div>
+        <p class="adder__feedback" id="adder-feedback" role="status" aria-live="polite"></p>
+      </div>
+
       <ol id="movie-grid" class="menu" aria-label="Ranked movie shortlist"></ol>
     </section>
   </main>
 
+  <div class="modal" id="clear-modal" hidden>
+    <div class="modal__scrim" data-close></div>
+    <div
+      class="modal__dialog glass"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="clear-modal-title"
+      aria-describedby="clear-modal-desc"
+    >
+      <h2 class="modal__title" id="clear-modal-title">Erase everything?</h2>
+      <p class="modal__desc" id="clear-modal-desc">
+        This removes all <span id="clear-modal-count">0</span> movie cards and the
+        votes tied to them. This cannot be undone.
+      </p>
+      <div class="modal__actions">
+        <button class="modal__cancel" type="button" data-close>Cancel</button>
+        <button class="modal__confirm" type="button" id="clear-confirm">Erase all</button>
+      </div>
+    </div>
+  </div>
+
   <footer class="site-foot">
     <div class="site-foot__inner glass">
       <p>
-        Scores are hand-curated · votes live in your browser · no accounts, no
+        Details come from IMDb · votes live in your browser · no accounts, no
         nonsense
       </p>
     </div>
