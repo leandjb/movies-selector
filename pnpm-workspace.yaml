@@ -1,2 +1,5 @@
 allowBuilds:
   '@fission-ai/openspec': true
+  '@parcel/watcher': true
+  puppeteer: true
+  unrs-resolver: true

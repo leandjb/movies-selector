@@ -7,17 +7,19 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Leandro Barros <ingleandrobarros@outlook.com>",
+  "license": "MIT",
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "^11.21.0",
+      "version": "11.21.0",
       "onFail": "download"
     }
   },
   "type": "module",
   "dependencies": {
-    "@fission-ai/openspec": "^1.9.0"
+    "@fission-ai/openspec": "1.11.0",
+    "impeccable": "3.6.0",
+    "jest": "^30.5.0"
   }
 }
