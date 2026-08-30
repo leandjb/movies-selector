@@ -1,8 +1,12 @@
 import "./imdb.js";
 import "./board.js";
+import "./gist.js";
+import "./winner.js";
 
 const { createBoard } = globalThis.Board;
 const { extractImdbIds, fetchTitle } = globalThis.Imdb;
+const { fetchGistText } = globalThis.Gist;
+const { tallyResults } = globalThis.Winner;
 
 function makeStorage() {
   const m = new Map();
@@ -292,5 +296,139 @@ describe("integration: removing a single movie", () => {
     board.remove("tt0222222");
     expect(board.count()).toBe(0);
     expect(store._has("shortlistBoard.v1")).toBe(true);
+  });
+});
+
+describe("integration: gist import feeds the add pipeline", () => {
+  const GIST_ID = "f14aba6d67faf726ac12a5936ccd14a3";
+  const GIST_URL = `https://gist.github.com/leandjb/${GIST_ID}`;
+  const GIST_TXT = [
+    "https://www.imdb.com/title/tt0118881/",
+    "https://www.imdb.com/title/tt0222222/",
+    "not a link",
+  ].join("\n");
+
+  const gistFetch = (txtContent) => async (url) => {
+    if (url.includes("api.github.com/gists/")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          files: {
+            "imbd-list.txt": {
+              filename: "imbd-list.txt",
+              type: "text/plain",
+              truncated: false,
+              content: txtContent,
+            },
+          },
+        }),
+      };
+    }
+    return { ok: false, status: 404, text: async () => "", json: async () => ({}) };
+  };
+
+  it("fetches gist text and merges it through addFromText (dupes/invalid reported)", async () => {
+    const store = makeStorage();
+    const board = createBoard(store, { extractFn: extractImdbIds });
+    // one movie already on the board -> the gist import reports it as a dupe
+    board.addFromText("https://www.imdb.com/title/tt0118881/");
+
+    const { name, content } = await fetchGistText(GIST_URL, gistFetch(GIST_TXT));
+    expect(name).toBe("imbd-list.txt");
+
+    const summary = board.addFromText(content);
+    expect(summary.addedIds).toEqual(["tt0222222"]);
+    expect(summary.duplicates).toBe(1); // tt0118881 already on the board
+    expect(summary.invalid).toBe(1); // "not a link"
+    expect(board.count()).toBe(2);
+    expect(board.list().map((m) => m.id)).toEqual(["tt0118881", "tt0222222"]);
+  });
+
+  it("respects the board cap when a gist import overflows it", async () => {
+    const store = makeStorage();
+    const board = createBoard(store, { extractFn: extractImdbIds });
+    const { content } = await fetchGistText(
+      GIST_ID,
+      gistFetch(
+        Array.from({ length: 12 }, (_, i) => `https://www.imdb.com/title/tt${String(i + 1).padStart(7, "0")}/`).join("\n")
+      )
+    );
+    const summary = board.addFromText(content);
+    expect(board.count()).toBe(9);
+    expect(summary.skipped).toBe(3);
+  });
+
+  it("leaves the board untouched when the gist fetch fails", async () => {
+    const store = makeStorage();
+    const board = createBoard(store, { extractFn: extractImdbIds });
+    board.addFromText("https://www.imdb.com/title/tt0118881/");
+
+    const failing = async (url) => {
+      if (url.includes("api.github.com")) throw new TypeError("offline");
+      return { ok: false, status: 404 };
+    };
+    await expect(fetchGistText(GIST_URL, failing)).rejects.toMatchObject({
+      code: "network",
+    });
+    expect(board.count()).toBe(1);
+    expect(board.hasId("tt0118881")).toBe(true);
+    expect(store._has("shortlistBoard.v1")).toBe(true);
+  });
+});
+
+describe("integration: blind-vote reveal tally over a live board", () => {
+  const LINKS3 = [
+    "https://www.imdb.com/title/tt0118881/",
+    "https://www.imdb.com/title/tt0222222/",
+    "https://www.imdb.com/title/tt0108052/",
+  ].join("\n");
+
+  it("tallies an app-shaped votes map against a hydrated board", async () => {
+    const store = makeStorage();
+    const board = createBoard(store, { extractFn: extractImdbIds });
+    const fetchImpl = fakeFetch({
+      tt0118881: { primaryTitle: "Her", startYear: 2013, rating: { aggregateRating: 8 } },
+      tt0222222: { primaryTitle: "Arrival", startYear: 2016, rating: { aggregateRating: 7.9 } },
+      tt0108052: { primaryTitle: "Schindler's List", startYear: 1993, rating: { aggregateRating: 9 } },
+    });
+    await addAndHydrate(board, LINKS3, fetchImpl);
+
+    const votes = { budget: 10, byId: { tt0222222: 5, tt0118881: 5 } };
+    const r = tallyResults(board.list(), votes.byId, votes.budget);
+    expect(r.ok).toBe(true);
+    expect(r.winnerId).toBe("tt0118881"); // tie -> earliest added wins
+    expect(r.rows[0].id).toBe("tt0118881");
+    expect(r.rows[0].pct).toBe(50);
+    expect(r.rows.map((row) => row.id)).toEqual([
+      "tt0118881",
+      "tt0222222",
+      "tt0108052",
+    ]);
+    expect(r.rows[2].votes).toBe(0);
+  });
+
+  it("stays blocked until the last vote is allocated, then resolves", async () => {
+    const store = makeStorage();
+    const board = createBoard(store, { extractFn: extractImdbIds });
+    await addAndHydrate(
+      board,
+      "https://www.imdb.com/title/tt0118881/ https://www.imdb.com/title/tt0222222/",
+      fakeFetch({
+        tt0118881: { primaryTitle: "Her", startYear: 2013, rating: { aggregateRating: 8 } },
+        tt0222222: { primaryTitle: "Arrival", startYear: 2016, rating: { aggregateRating: 7.9 } },
+      })
+    );
+
+    const votes = { budget: 5, byId: { tt0118881: 3, tt0222222: 1 } };
+    const blocked = tallyResults(board.list(), votes.byId, votes.budget);
+    expect(blocked.ok).toBe(false);
+    expect(blocked.reason).toBe("missing-votes");
+    expect(blocked.remaining).toBe(1);
+
+    votes.byId.tt0222222 = 2;
+    const ready = tallyResults(board.list(), votes.byId, votes.budget);
+    expect(ready.ok).toBe(true);
+    expect(ready.total).toBe(5);
   });
 });

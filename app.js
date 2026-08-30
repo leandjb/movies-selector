@@ -66,11 +66,8 @@
     Object.values(state.byId).reduce((sum, n) => sum + n, 0);
   const remaining = () => state.budget - totalAllocated();
 
-  const rankMovies = () =>
-    [...board.list()].sort(
-      (a, b) => allocated(b) - allocated(a) || (a.id < b.id ? -1 : 1)
-    );
-
+  // Display order is the board's insertion order — votes never move cards.
+  // (Winner selection lives in winner.js and only runs on reveal.)
   const maxAllocated = () => Math.max(1, ...board.list().map((m) => allocated(m)));
 
   function trimExcess() {
@@ -109,9 +106,6 @@
         `</svg>`
     );
 
-  const HERO_DEFAULT =
-    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 300'%3E%3Crect width='200' height='300' fill='%230d1017'/%3E%3Ctext x='100' y='158' text-anchor='middle' font-family='sans-serif' font-size='40' fill='%233ee1ff'%3E%E2%98%85%3C/text%3E%3C/svg%3E";
-
   const POSTER_IMG = (movie) =>
     `<img class="menu__poster" src="${esc(
       movie.posterUrl || POSTER_FALLBACK
@@ -123,9 +117,6 @@
 
   const grid = document.getElementById("movie-grid");
   const boardNote = document.getElementById("board-note");
-  const heroPoster = document.getElementById("hero-winner-poster");
-  const heroTitle = document.getElementById("hero-winner-title");
-  const heroVotes = document.getElementById("hero-winner-votes");
   const budgetValue = document.getElementById("budget-value");
   const budgetRemaining = document.getElementById("budget-remaining");
   const showWinnerBtn = document.getElementById("show-winner");
@@ -133,6 +124,8 @@
   const adderInput = document.getElementById("imdb-input");
   const adderAdd = document.getElementById("adder-add");
   const txtInput = document.getElementById("txt-input");
+  const gistInput = document.getElementById("gist-input");
+  const gistImportBtn = document.getElementById("gist-import");
   const boardCount = document.getElementById("board-count");
   const clearAllBtn = document.getElementById("clear-all");
   const feedback = document.getElementById("adder-feedback");
@@ -149,7 +142,6 @@
 
   function cardHtml(movie, rank, share) {
     const votes = allocated(movie);
-    const isWinner = rank === 1;
     const canInc = remaining() > 0;
     const canDec = votes > 0;
     const loading = movie.status === "loading";
@@ -163,7 +155,7 @@
       : POSTER_IMG(movie);
 
     return `
-      <li class="menu__card${isWinner ? " menu__card--winner" : ""}" data-id="${esc(movie.id)}">
+      <li class="menu__card" data-id="${esc(movie.id)}">
         <button
           type="button"
           class="menu__remove"
@@ -171,11 +163,6 @@
           aria-label="Remove ${esc(movie.title || movie.id)} from the shortlist"
         ><span aria-hidden="true">×</span></button>
         <div class="menu__rank" aria-hidden="true">${rank}</div>
-        ${
-          isWinner
-            ? `<div class="menu__winner-chip" aria-hidden="true">Winner</div>`
-            : ""
-        }
         <div class="menu__poster-wrap">
           ${posterInner}
         </div>
@@ -218,17 +205,17 @@
   }
 
   function render({ focusMovieId, focusDirection } = {}) {
-    const ranked = rankMovies();
+    const movies = board.list(); // insertion order — never vote-sorted
     const max = maxAllocated();
 
-    if (ranked.length === 0) {
+    if (movies.length === 0) {
       grid.innerHTML = `
         <li class="menu__empty" role="status">
           <h3>Your shortlist is empty</h3>
           <p>Paste an IMDb link above or import a .txt file to build tonight's feature.</p>
         </li>`;
     } else {
-      grid.innerHTML = ranked
+      grid.innerHTML = movies
         .map((m, i) => cardHtml(m, i + 1, allocated(m) / max))
         .join("");
     }
@@ -239,23 +226,10 @@
     const left = remaining();
     budgetRemaining.textContent = `${left} ${left === 1 ? "vote" : "votes"} left`;
 
-    const empty = ranked.length === 0;
-    const leader = ranked[0];
-
-    if (empty) {
-      heroPoster.src = HERO_DEFAULT;
-      heroPoster.alt = "No movie selected yet";
-      heroTitle.textContent = "—";
-      heroVotes.textContent = "";
-      boardNote.textContent =
-        "Build tonight's shortlist — paste an IMDb link or import a .txt file.";
-    } else {
-      heroPoster.src = leader.posterUrl || POSTER_FALLBACK;
-      heroPoster.alt = `${leader.title || "Movie"} poster`;
-      heroTitle.textContent = leader.title || "—";
-      heroVotes.textContent = `${allocated(leader)} ${allocated(leader) === 1 ? "vote" : "votes"} · ${leader.year || ""}`;
-      boardNote.textContent = `★ ${leader.title || "—"} is winning with ${allocated(leader)} ${allocated(leader) === 1 ? "vote" : "votes"}.`;
-    }
+    const empty = movies.length === 0;
+    boardNote.textContent = empty
+      ? "Build tonight's shortlist — paste an IMDb link or import a file."
+      : "Allocate your votes quietly — the winner comes out when you call it.";
 
     boardCount.textContent = `${board.count()} / ${MAX_CARDS}`;
     clearAllBtn.disabled = empty;
@@ -311,17 +285,26 @@
     feedback.classList.toggle("adder__feedback--error", Boolean(isError));
   }
 
+  // One-line human summary of an add/import result, shared by paste,
+  // TXT file, and gist imports.
+  function summaryText(summary) {
+    const added = summary.addedIds.length;
+    const parts = [];
+    if (added > 0)
+      parts.push(`Added ${added} ${added === 1 ? "movie" : "movies"}`);
+    if (summary.duplicates > 0)
+      parts.push(`${summary.duplicates} duplicate${summary.duplicates === 1 ? "" : "s"}`);
+    if (summary.invalid > 0)
+      parts.push(`${summary.invalid} invalid`);
+    if (summary.skipped > 0)
+      parts.push(`${summary.skipped} skipped (board full)`);
+    return parts.join(" · ");
+  }
+
   function summarize(summary) {
     const added = summary.addedIds.length;
     if (added > 0) {
-      const parts = [`Added ${added} ${added === 1 ? "movie" : "movies"}`];
-      if (summary.duplicates > 0)
-        parts.push(`${summary.duplicates} duplicate${summary.duplicates === 1 ? "" : "s"}`);
-      if (summary.invalid > 0)
-        parts.push(`${summary.invalid} invalid`);
-      if (summary.skipped > 0)
-        parts.push(`${summary.skipped} skipped (board full)`);
-      showFeedback(parts.join(" · "), false);
+      showFeedback(summaryText(summary), false);
     } else if (summary.duplicates > 0) {
       showFeedback("That movie is already on the board.", true);
     } else if (summary.invalid > 0) {
@@ -401,6 +384,52 @@
   });
 
   /* ------------------------------------------------------------------
+   * Gist import
+   * ------------------------------------------------------------------ */
+
+  const GIST_ERRORS = {
+    "bad-ref": "That doesn't look like a gist URL or ID.",
+    network: "Could not reach GitHub — check the connection and try again.",
+    "not-found": "That gist doesn't exist (or is private).",
+    "rate-limited": "GitHub rate limit reached — try again in a few minutes.",
+    "no-text-file": "That gist has no .txt file to import.",
+  };
+
+  async function handleGistImport() {
+    const ref = gistInput.value.trim();
+    if (!ref) {
+      showFeedback("Paste a gist URL or ID first.", true);
+      gistInput.focus();
+      return;
+    }
+    gistImportBtn.disabled = true;
+    try {
+      // A failed fetch throws before any board mutation, so failures
+      // always leave the board untouched.
+      const { name, content } = await window.Gist.fetchGistText(ref);
+      const summary = await handleAdd(content);
+      showFeedback(`Imported ${name}: ${summaryText(summary)}`, false);
+      gistInput.value = "";
+    } catch (err) {
+      showFeedback(
+        GIST_ERRORS[(err && err.code) || ""] ||
+          "Could not import that gist.",
+        true
+      );
+    } finally {
+      gistImportBtn.disabled = false;
+    }
+  }
+
+  gistImportBtn.addEventListener("click", handleGistImport);
+  gistInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleGistImport();
+    }
+  });
+
+  /* ------------------------------------------------------------------
    * Voting
    * ------------------------------------------------------------------ */
 
@@ -432,12 +461,12 @@
 
   function removeMovie(id) {
     if (!board.hasId(id)) return;
-    const ranked = rankMovies();
-    const idx = ranked.findIndex((m) => m.id === id);
+    const ordered = board.list(); // display order = insertion order
+    const idx = ordered.findIndex((m) => m.id === id);
     board.remove(id);
     pruneOrphanVotes();
     saveState();
-    const next = ranked[idx + 1] || ranked[idx - 1] || null;
+    const next = ordered[idx + 1] || ordered[idx - 1] || null;
     render({ focusMovieId: next ? next.id : null, focusDirection: next ? "remove" : null });
     if (!next) adderInput.focus();
     showFeedback("Removed from the shortlist.", false);
@@ -464,26 +493,63 @@
   );
 
   /* ------------------------------------------------------------------
-   * Winner celebration
+   * Winner reveal (blind voting — the only winner view)
    * ------------------------------------------------------------------ */
 
-  const reduceMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
-  ).matches;
+  const winnerModal = document.getElementById("winner-modal");
+  const winnerHero = document.getElementById("winner-hero");
+  const winnerRows = document.getElementById("winner-rows");
 
+  // Refuses while any vote is unallocated; otherwise opens the results
+  // modal fresh from a new tally every time.
   showWinnerBtn.addEventListener("click", () => {
-    if (board.count() === 0) return;
-    const leader = rankMovies()[0];
-    const card = grid.querySelector(`[data-id="${CSS.escape(leader.id)}"]`);
-    if (!card) return;
-    card.scrollIntoView({
-      behavior: reduceMotion ? "auto" : "smooth",
-      block: "center",
-    });
-    card.classList.add("celebrating");
-    boardNote.textContent = `🎉 ${leader.title || "—"} is the winner with ${allocated(leader)} ${allocated(leader) === 1 ? "vote" : "votes"}!`;
-    window.setTimeout(() => card.classList.remove("celebrating"), 2600);
+    const result = window.Winner.tallyResults(
+      board.list(),
+      state.byId,
+      state.budget
+    );
+    if (!result.ok) {
+      if (result.reason === "missing-votes") {
+        showFeedback(
+          `Allocate ${result.remaining} more ${result.remaining === 1 ? "vote" : "votes"} before revealing the winner.`,
+          true
+        );
+      } else {
+        showFeedback("Add some movies to the board first.", true);
+      }
+      return;
+    }
+    openWinnerModal(result);
   });
+
+  function renderReveal(result) {
+    const winner =
+      result.rows.find((r) => r.id === result.winnerId) || result.rows[0];
+    winnerHero.innerHTML = `
+      <div class="winner-hero__poster">${POSTER_IMG(winner)}</div>
+      <div class="winner-hero__meta">
+        <p class="winner-hero__pct" aria-hidden="true">${winner.pct}%</p>
+        <h3 class="winner-hero__title">${esc(winner.title || "—")}</h3>
+        <p class="winner-hero__sub">
+          ${winner.year != null ? `${esc(String(winner.year))} · ` : ""}${winner.votes} ${winner.votes === 1 ? "vote" : "votes"}
+        </p>
+      </div>`;
+    winnerRows.innerHTML = result.rows
+      .map(
+        (r, i) => `
+        <li class="winner-row${r.id === result.winnerId ? " winner-row--winner" : ""}">
+          <span class="winner-row__rank" aria-hidden="true">${i + 1}</span>
+          <img class="winner-row__thumb" src="${esc(
+            r.posterUrl || POSTER_FALLBACK
+          )}" alt="" loading="lazy"
+            onerror="this.onerror=null;this.src='${POSTER_FALLBACK}';">
+          <span class="winner-row__title">${esc(r.title || "—")}</span>
+          <span class="winner-row__votes">${r.votes} ${r.votes === 1 ? "vote" : "votes"}</span>
+          <span class="winner-row__pct" aria-hidden="true">${r.pct}%</span>
+        </li>`
+      )
+      .join("");
+  }
 
   /* ------------------------------------------------------------------
    * Clear-all modal
@@ -491,26 +557,31 @@
 
   let lastFocused = null;
 
-  function onModalKey(e) {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      closeModal();
-      return;
-    }
-    if (e.key === "Tab") {
-      const focusables = modal.querySelectorAll("button:not([disabled])");
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
+  // Shared focus trap: Escape closes, Tab cycles within the dialog.
+  function trapKey(container, closeFn) {
+    return function onModalKey(e) {
+      if (e.key === "Escape") {
         e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
+        closeFn();
+        return;
       }
-    }
+      if (e.key === "Tab") {
+        const focusables = container.querySelectorAll("button:not([disabled])");
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
   }
+
+  const onClearModalKey = trapKey(modal, closeModal);
 
   function openModal() {
     if (board.count() === 0) return;
@@ -518,12 +589,12 @@
     modalCount.textContent = String(board.count());
     modal.hidden = false;
     clearConfirm.focus();
-    document.addEventListener("keydown", onModalKey);
+    document.addEventListener("keydown", onClearModalKey);
   }
 
   function closeModal() {
     modal.hidden = true;
-    document.removeEventListener("keydown", onModalKey);
+    document.removeEventListener("keydown", onClearModalKey);
     if (lastFocused && typeof lastFocused.focus === "function") lastFocused.focus();
   }
 
@@ -541,6 +612,36 @@
   });
 
   clearAllBtn.addEventListener("click", openModal);
+
+  /* ------------------------------------------------------------------
+   * Winner results modal
+   * ------------------------------------------------------------------ */
+
+  let revealFocusReturn = null;
+  const onWinnerModalKey = trapKey(winnerModal, closeWinnerModal);
+
+  function openWinnerModal(result) {
+    renderReveal(result); // fresh tally on every open
+    revealFocusReturn = document.activeElement;
+    winnerModal.hidden = false;
+    winnerModal.classList.add("celebrating"); // burst tied to open state
+    const firstBtn = winnerModal.querySelector("button:not([disabled])");
+    if (firstBtn) firstBtn.focus();
+    document.addEventListener("keydown", onWinnerModalKey);
+  }
+
+  function closeWinnerModal() {
+    winnerModal.hidden = true;
+    winnerModal.classList.remove("celebrating"); // stops the celebration
+    document.removeEventListener("keydown", onWinnerModalKey);
+    if (revealFocusReturn && typeof revealFocusReturn.focus === "function") {
+      revealFocusReturn.focus();
+    }
+  }
+
+  winnerModal.addEventListener("click", (e) => {
+    if (e.target.hasAttribute("data-close")) closeWinnerModal();
+  });
 
   /* ------------------------------------------------------------------
    * Boot

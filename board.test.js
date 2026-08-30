@@ -163,3 +163,31 @@ describe("board.remove", () => {
     expect(b.count()).toBe(0);
   });
 });
+
+describe("board insertion order", () => {
+  // The app renders cards in board.list() order and votes live outside the
+  // board, so this order is the stable display order — it must never shift.
+  it("keeps list() in insertion order through add, hydrate, and remove", () => {
+    const b = createBoard(makeStorage(), { extractFn: extract });
+    b.addFromText(LINKS(3));
+    expect(b.list().map((m) => m.id)).toEqual([
+      "tt0000001",
+      "tt0000002",
+      "tt0000003",
+    ]);
+    b.hydrate("tt0000002", { title: "Middle" });
+    expect(b.list().map((m) => m.id)).toEqual([
+      "tt0000001",
+      "tt0000002",
+      "tt0000003",
+    ]);
+    b.remove("tt0000001");
+    expect(b.list().map((m) => m.id)).toEqual(["tt0000002", "tt0000003"]);
+    b.addFromText("https://www.imdb.com/title/tt0000004/");
+    expect(b.list().map((m) => m.id)).toEqual([
+      "tt0000002",
+      "tt0000003",
+      "tt0000004",
+    ]);
+  });
+});

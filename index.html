@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>The Shortlist — Vote for tonight's feature</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta
     name="description"
     content="Six great movies, one night. Peek the scores, watch a trailer, and vote — the winner takes the night."
@@ -17,6 +18,8 @@
   <link rel="stylesheet" href="styles.css">
   <script src="imdb.js" defer></script>
   <script src="board.js" defer></script>
+  <script src="gist.js" defer></script>
+  <script src="winner.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -48,78 +51,95 @@
         <p class="hero__slab">VOTES RANK THE BOARD · THE WINNER TAKES THE NIGHT</p>
         <p class="hero__lede">
           Paste an IMDb link or import a .txt of links, then cast your vote.
-          The leader's pane glows — and the film with the most votes wins the night.
+          The winner stays secret until you reveal the night's film.
         </p>
         <a class="hero__cta" href="#movie-grid">Build the shortlist</a>
       </div>
-
-      <aside class="hero__winner glass" aria-live="polite" aria-label="Currently winning">
-        <p class="hero__winner-label">now winning</p>
-        <div class="hero__winner-poster">
-          <img
-            id="hero-winner-poster"
-            alt="Currently winning movie poster"
-            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 300'%3E%3Crect width='200' height='300' fill='%230d1017'/%3E%3Ctext x='100' y='158' text-anchor='middle' font-family='sans-serif' font-size='40' fill='%233ee1ff'%3E%E2%98%85%3C/text%3E%3C/svg%3E"
-          >
-        </div>
-        <div class="hero__winner-meta">
-          <p class="hero__winner-title" id="hero-winner-title">—</p>
-          <p class="hero__winner-votes" id="hero-winner-votes"></p>
-        </div>
-      </aside>
     </section>
 
     <section class="board" aria-labelledby="board-title">
+      <div class="controls">
+        <section class="ctl glass" aria-labelledby="ctl-budget-title">
+          <p class="ctl__kicker" id="ctl-budget-title">Vote budget</p>
+          <div class="ctl__body">
+            <div class="budget" role="group" aria-label="Set your vote budget">
+              <span class="budget__label" id="budget-label">votes to give</span>
+              <button class="budget__btn" id="budget-minus" type="button" aria-label="Fewer votes">
+                <span aria-hidden="true">−</span>
+              </button>
+              <span class="budget__value" id="budget-value" aria-live="polite">10</span>
+              <button class="budget__btn" id="budget-plus" type="button" aria-label="More votes">
+                <span aria-hidden="true">+</span>
+              </button>
+              <span class="budget__remaining" id="budget-remaining" aria-live="polite"></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="ctl glass" aria-labelledby="ctl-add-title">
+          <p class="ctl__kicker" id="ctl-add-title">Add by IMDb link</p>
+          <form class="adder__form" id="adder-form">
+            <label class="adder__label" for="imdb-input">IMDb link</label>
+            <input
+              class="adder__input"
+              id="imdb-input"
+              type="text"
+              inputmode="url"
+              placeholder="Paste an IMDb link, e.g. https://www.imdb.com/title/tt0118881/"
+              autocomplete="off"
+            >
+            <button class="adder__add" id="adder-add" type="submit">Add</button>
+          </form>
+        </section>
+
+        <section class="ctl glass" aria-labelledby="ctl-import-title">
+          <p class="ctl__kicker" id="ctl-import-title">Import</p>
+          <div class="ctl__body ctl__body--import">
+            <label class="adder__file" id="file-label">
+              Import .txt
+              <input id="txt-input" type="file" accept=".txt,text/plain" hidden>
+            </label>
+            <div class="gist">
+              <label class="adder__label" for="gist-input">Gist URL</label>
+              <input
+                class="adder__input gist__input"
+                id="gist-input"
+                type="url"
+                placeholder="gist.github.com/user/your-gist-id"
+                autocomplete="off"
+                spellcheck="false"
+              >
+              <button class="gist__btn" id="gist-import" type="button">Import gist</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="ctl glass ctl--status" aria-labelledby="ctl-status-title">
+          <p class="ctl__kicker" id="ctl-status-title">Status</p>
+          <div class="ctl__body ctl__body--status">
+            <p class="adder__feedback" id="adder-feedback" role="status" aria-live="polite"></p>
+            <span class="adder__count" id="board-count" aria-live="polite">0 / 9</span>
+            <button class="adder__clear" id="clear-all" type="button" disabled>Clear all</button>
+          </div>
+        </section>
+      </div>
+
       <div class="board__head glass">
         <div class="board__headline">
           <h2 id="board-title" class="board__title">The Shortlist</h2>
           <p class="board__note" id="board-note" aria-live="polite">
-            Ranked by your votes.
+            Vote with your budget — the leader wears the glow.
           </p>
         </div>
-        <div class="board__tools">
-          <div class="budget" role="group" aria-label="Set your vote budget">
-            <span class="budget__label" id="budget-label">votes to give</span>
-            <button class="budget__btn" id="budget-minus" type="button" aria-label="Fewer votes">
-              <span aria-hidden="true">−</span>
-            </button>
-            <span class="budget__value" id="budget-value" aria-live="polite">10</span>
-            <button class="budget__btn" id="budget-plus" type="button" aria-label="More votes">
-              <span aria-hidden="true">+</span>
-            </button>
-            <span class="budget__remaining" id="budget-remaining" aria-live="polite"></span>
-          </div>
-          <button class="board__show-winner" id="show-winner" type="button">
-            <span aria-hidden="true">🎉</span> Show the winner
-          </button>
-        </div>
       </div>
 
-      <div class="adder glass" aria-label="Add movies to the shortlist">
-        <form class="adder__form" id="adder-form">
-          <label class="adder__label" for="imdb-input">IMDb link</label>
-          <input
-            class="adder__input"
-            id="imdb-input"
-            type="text"
-            inputmode="url"
-            placeholder="Paste an IMDb link, e.g. https://www.imdb.com/title/tt0118881/"
-            autocomplete="off"
-          >
-          <button class="adder__add" id="adder-add" type="submit">Add</button>
-        </form>
-        <div class="adder__tools">
-          <label class="adder__file" id="file-label">
-            Import .txt
-            <input id="txt-input" type="file" accept=".txt,text/plain" hidden>
-          </label>
-          <span class="adder__count" id="board-count" aria-live="polite">0 / 9</span>
-          <button class="adder__clear" id="clear-all" type="button" disabled>Clear all</button>
-        </div>
-        <p class="adder__feedback" id="adder-feedback" role="status" aria-live="polite"></p>
-      </div>
+      <ol id="movie-grid" class="menu" aria-label="Movie shortlist"></ol>
 
-      <ol id="movie-grid" class="menu" aria-label="Ranked movie shortlist"></ol>
+      <section class="reveal glass" aria-label="Reveal the winner">
+        <button class="board__show-winner" id="show-winner" type="button">
+          <span aria-hidden="true">🎉</span> Show the winner
+        </button>
+      </section>
     </section>
   </main>
 
@@ -144,11 +164,37 @@
     </div>
   </div>
 
+  <div class="modal winner-modal" id="winner-modal" hidden>
+    <div class="modal__scrim" data-close></div>
+    <div
+      class="modal__dialog glass"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="winner-modal-title"
+    >
+      <button class="modal__x" type="button" data-close aria-label="Close the results">
+        <span aria-hidden="true">×</span>
+      </button>
+      <h2 class="modal__title" id="winner-modal-title">Tonight's winner</h2>
+      <div class="winner-hero" id="winner-hero"></div>
+      <ol class="winner-rows" id="winner-rows" aria-label="Votes summary"></ol>
+    </div>
+  </div>
+
   <footer class="site-foot">
     <div class="site-foot__inner glass">
       <p>
         Details come from IMDb · votes live in your browser · no accounts, no
         nonsense
+      </p>
+      <p class="site-foot__credit">
+        Developed with passion by
+        <a
+          href="https://github.com/leandjb"
+          target="_blank"
+          rel="noopener noreferrer"
+          >leandjb</a
+        >
       </p>
     </div>
   </footer>
