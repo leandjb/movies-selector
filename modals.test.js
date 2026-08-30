@@ -105,11 +105,11 @@ describe("Clear-all confirmation modal", () => {
     document
       .querySelector('.menu__card[data-id="tt0111161"] [data-vote="tt0111161"][data-direction="inc"]')
       .click();
-    expect(document.getElementById("board-count").textContent).toBe("2 / 9");
+    expect(document.getElementById("board-count-chip").textContent).toBe("2 / 9");
     document.getElementById("clear-all").click();
     document.getElementById("clear-confirm").click();
     expect(document.getElementById("clear-modal").hidden).toBe(true);
-    expect(document.getElementById("board-count").textContent).toBe("0 / 9");
+    expect(document.getElementById("board-count-chip").textContent).toBe("0 / 9");
     expect(
       document.querySelector(".menu__empty") ||
         document.querySelectorAll("#movie-grid .menu__card").length === 0
@@ -130,9 +130,9 @@ describe("Winner reveal modal", () => {
     await addAndHydrate("tt0111161");
     document.getElementById("show-winner").click();
     expect(document.getElementById("winner-modal").hidden).toBe(true);
-    expect(document.getElementById("adder-feedback").textContent).toBe(
-      "Allocate 10 more votes before revealing the winner."
-    );
+    expect(
+      document.querySelector("#toast-region .toast--error .toast__text").textContent
+    ).toBe("Allocate 10 more votes before revealing the winner.");
   });
 
   test("opens with the winner hero, ranked rows, and a highlighted winner", async () => {

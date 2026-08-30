@@ -112,6 +112,37 @@ describe("Movie cards", () => {
     expect(badge.textContent.trim()).toBe("—");
   });
 
+  test("badge row shows the year once hydrated", async () => {
+    await addAndHydrate("tt0111161");
+    const year = document.querySelector(
+      '.menu__card[data-id="tt0111161"] .badge--year'
+    );
+    expect(year.textContent.trim()).toBe("2021");
+  });
+
+  test("badge row year placeholder survives a failed hydration", async () => {
+    installFetch(
+      createFetchRouter([statusRoute("suggestion", 500, { error: "nope" })])
+    );
+    await addAndHydrate("tt0111161");
+    const card = document.querySelector('.menu__card[data-id="tt0111161"]');
+    expect(card.querySelector(".badge--year").textContent.trim()).toBe("—");
+    // the IMDb link is buildable from the id, so it renders regardless
+    expect(card.querySelector(".badge--link")).not.toBeNull();
+  });
+
+  test("badge row links to the movie's IMDb page in a new tab", async () => {
+    await addAndHydrate("tt0111161");
+    const link = document.querySelector(
+      '.menu__card[data-id="tt0111161"] .badge--link'
+    );
+    expect(link.getAttribute("href")).toBe(
+      "https://www.imdb.com/title/tt0111161/"
+    );
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+  });
+
   test("broken poster URL wires the fallback class via onerror", async () => {
     await addAndHydrate("tt0111161");
     const img = document.querySelector(

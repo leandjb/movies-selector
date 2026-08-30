@@ -48,6 +48,23 @@ function vote(id, direction, times) {
   }
 }
 
+// Feedback now arrives as toasts in the live region rather than an inline bar.
+function toastTexts() {
+  return [...document.querySelectorAll("#toast-region .toast__text")].map(
+    (n) => n.textContent
+  );
+}
+
+function lastToastNode() {
+  const nodes = document.querySelectorAll("#toast-region .toast");
+  return nodes[nodes.length - 1] || null;
+}
+
+function lastToast() {
+  const node = lastToastNode();
+  return node ? node.querySelector(".toast__text").textContent : null;
+}
+
 function scoreOf(id) {
   return document.querySelector(
     `.menu__card[data-id="${id}"] .vote__score`
@@ -91,35 +108,31 @@ describe("Add by IMDb link section", () => {
   test("submit adds a card and clears the input", async () => {
     addMovie("tt0111161");
     expect(document.getElementById("imdb-input").value).toBe("");
-    expect(document.getElementById("board-count").textContent).toBe("1 / 9");
+    expect(document.getElementById("board-count-chip").textContent).toBe("1 / 9");
     await flushHydration();
     expect(
       document.querySelector('.menu__card[data-id="tt0111161"]')
     ).not.toBeNull();
   });
 
-  test("duplicate and invalid input produce feedback", () => {
+  test("duplicate and invalid input raise toasts", () => {
     addMovie("tt0111161");
-    expect(document.getElementById("adder-feedback").textContent).toMatch(
-      /Added 1 movie/
-    );
+    expect(lastToast()).toMatch(/Added 1 movie/);
     addMovie("tt0111161");
-    expect(document.getElementById("adder-feedback").textContent).toBe(
-      "That movie is already on the board."
-    );
+    expect(lastToast()).toBe("That movie is already on the board.");
+    expect(lastToastNode().classList.contains("toast--error")).toBe(true);
+
     const input = document.getElementById("imdb-input");
     input.value = "not a link";
     document
       .getElementById("adder-form")
       .dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
-    expect(document.getElementById("adder-feedback").textContent).toBe(
-      "That doesn't look like a valid IMDb link."
-    );
+    expect(lastToast()).toBe("That doesn't look like a valid IMDb link.");
   });
 
   test("add is disabled and placeholder swaps at 9/9", async () => {
     for (let i = 1; i <= 9; i++) await addAndHydrate("tt011116" + i);
-    expect(document.getElementById("board-count").textContent).toBe("9 / 9");
+    expect(document.getElementById("board-count-chip").textContent).toBe("9 / 9");
     expect(document.getElementById("adder-add").disabled).toBe(true);
     expect(document.getElementById("imdb-input").placeholder).toContain(
       "Board is full"
@@ -145,7 +158,7 @@ describe("Import section", () => {
     expect(document.getElementById("gist-import").disabled).toBe(true);
     await flushHydration();
     expect(document.getElementById("gist-import").disabled).toBe(false);
-    expect(document.getElementById("board-count").textContent).not.toBe("0 / 9");
+    expect(document.getElementById("board-count-chip").textContent).not.toBe("0 / 9");
   });
 
   test("Enter key in the gist field triggers an import", async () => {
@@ -161,23 +174,82 @@ describe("Import section", () => {
       new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
     );
     await flushHydration();
-    expect(document.getElementById("board-count").textContent).not.toBe("0 / 9");
+    expect(document.getElementById("board-count-chip").textContent).not.toBe("0 / 9");
   });
 });
 
-describe("Status bar", () => {
-  test("count, Clear all disabled state, and feedback classes", async () => {
+describe("Navbar status surface", () => {
+  test("navbar holds the board count chip, votes pill, and reveal control", () => {
+    const head = document.querySelector(".site-head__inner");
+    expect(head.querySelector("#board-count-chip")).not.toBeNull();
+    expect(head.querySelector("#votes-pill")).not.toBeNull();
+    expect(head.querySelector("#show-winner")).not.toBeNull();
+  });
+
+  test("count chip and Clear all track the board", async () => {
     expect(document.getElementById("clear-all").disabled).toBe(true);
-    expect(document.getElementById("board-count").textContent).toBe("0 / 9");
+    expect(document.getElementById("board-count-chip").textContent).toBe("0 / 9");
     await addAndHydrate("tt0111161");
     expect(document.getElementById("clear-all").disabled).toBe(false);
-    expect(document.getElementById("board-count").textContent).toBe("1 / 9");
-    document.getElementById("adder-feedback").textContent = "oops";
-    document.getElementById("adder-feedback").classList.add("adder__feedback--error");
-    expect(
-      document
-        .getElementById("adder-feedback")
-        .classList.contains("adder__feedback--error")
-    ).toBe(true);
+    expect(document.getElementById("board-count-chip").textContent).toBe("1 / 9");
+  });
+
+  test("votes pill counts down as votes are allocated and returns on removal", async () => {
+    await addAndHydrate("tt0111161");
+    const pill = document.getElementById("votes-pill");
+    expect(document.getElementById("votes-pill-label").textContent).toBe(
+      "10 votes missing"
+    );
+    expect(pill.classList.contains("pill--missing")).toBe(true);
+
+    vote("tt0111161", "inc", 4);
+    expect(document.getElementById("votes-pill-label").textContent).toBe(
+      "6 votes missing"
+    );
+
+    vote("tt0111161", "inc", 6);
+    expect(document.getElementById("votes-pill-label").textContent).toBe(
+      "All votes cast"
+    );
+    expect(pill.classList.contains("pill--ready")).toBe(true);
+
+    vote("tt0111161", "dec", 1);
+    expect(document.getElementById("votes-pill-label").textContent).toBe(
+      "1 vote missing"
+    );
+  });
+
+  test("reveal control lives in the navbar and is disabled on an empty board", () => {
+    const reveal = document.getElementById("show-winner");
+    expect(document.querySelector(".site-head__inner #show-winner")).toBe(reveal);
+    expect(reveal.disabled).toBe(true);
+    expect(document.querySelector(".reveal")).toBeNull();
+  });
+
+  test("budget progress bar fills with votes given", async () => {
+    await addAndHydrate("tt0111161");
+    const bar = document.getElementById("budget-bar");
+    const progress = document.getElementById("budget-progress");
+    expect(bar.style.width).toBe("0%");
+    vote("tt0111161", "inc", 3);
+    expect(bar.style.width).toBe("30%");
+    expect(progress.getAttribute("aria-valuenow")).toBe("3");
+    expect(progress.getAttribute("aria-valuemax")).toBe("10");
+  });
+});
+
+describe("Hero control column", () => {
+  test("hero stacks the budget, add, and import panels in one column", () => {
+    const tools = document.querySelector(".hero__tools");
+    expect(tools).not.toBeNull();
+    expect(tools.querySelector("#budget-value")).not.toBeNull();
+    expect(tools.querySelector("#adder-form")).not.toBeNull();
+    expect(tools.querySelector("#gist-import")).not.toBeNull();
+  });
+
+  test("the old mid-page status bar and board head are gone", () => {
+    expect(document.querySelector(".ctl--bar")).toBeNull();
+    expect(document.querySelector(".board__head")).toBeNull();
+    expect(document.getElementById("adder-feedback")).toBeNull();
   });
 });

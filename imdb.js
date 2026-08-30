@@ -26,15 +26,18 @@
  *      rating (suggestion lacks it). IMDb blocks many server-side fetchers so
  *      this is a softer fallback.
  *
- *   3. api.imdbapi.dev/titles/{id} — legacy, now DEAD (domain stopped resolving
- *      in July 2026). Kept last: the DNS failure is instant and the chain
- *      self-heals if the service returns. Nested IMDb-style fields:
- *      titleText.text, ratings.aggregateRating, releaseDate.year,
- *      primaryImage.url (+ legacy flat fields as fallbacks).
- *
  *   A response that yields no usable fields counts as a provider failure and
  *   moves the chain on. If every provider fails, the card degrades to
  *   placeholder dashes — never a crash or fabricated data.
+ *
+ *   PROXY ROTATION: every fetch starts its proxy chain at a rotating offset, so
+ *   consecutive fetches (including the parallel ones the hydration queue
+ *   launches) spread across proxies instead of hammering the first one — see
+ *   the metadata-fetch spec's bounded-concurrency requirement.
+ *
+ *   RATE LIMITS: a 429 carrying `Retry-After` waits exactly that long (capped
+ *   by RETRY_AFTER_CAP) before retrying; without the header it falls back to
+ *   the capped exponential backoff.
  * ----------------------------------------------------------------------------
  */
 (function (root) {
@@ -47,7 +50,6 @@
   const PAGE_URL = (id) => "https://www.imdb.com/title/" + id + "/";
   const SUGGESTION_URL = (id) =>
     "https://v3.sg.media-imdb.com/suggestion/x/" + encodeURIComponent(id) + ".json";
-  const API_BASE = "https://api.imdbapi.dev/titles/";
 
   // Keyless CORS proxies, tried sequentially (first win). corsproxy.io is
   // dropped: keyless requests always 401, so every call was pure waste.
@@ -84,60 +86,6 @@
 
   const hasAnyField = (n) =>
     Boolean(n && (n.title || n.posterUrl || n.year != null || n.rating != null));
-
-  function normalizeTitle(id, data) {
-    if (!data || typeof data !== "object") return null;
-
-    // Title: IMDbAPI nested titleText.text first, then legacy flat fields.
-    let title = pick(data, ["primaryTitle", "originalTitle", "title"]);
-    const tt = data.titleText;
-    if (title == null && tt != null) {
-      title = typeof tt === "string" ? tt : tt.text || tt.original;
-    }
-    if (title == null && data.originalTitleText != null) {
-      title =
-        typeof data.originalTitleText === "string"
-          ? data.originalTitleText
-          : data.originalTitleText.text;
-    }
-
-    // Year: startYear/year ints, or releaseDate as object {year} or string.
-    let year = toNum(pick(data, ["startYear", "year"]));
-    if (year == null) {
-      const rd = data.releaseDate;
-      if (rd != null && typeof rd === "object") year = toNum(rd.year);
-      else if (typeof rd === "string") year = toNum(rd.slice(0, 4));
-    }
-
-    // Rating: ratings.aggregateRating (real shape), rating.aggregateRating
-    // (legacy), then flat values.
-    let rating;
-    const ratings = data.ratings != null && typeof data.ratings === "object" ? data.ratings : null;
-    const ratingField = data.rating;
-    if (ratings) rating = toNum(pick(ratings, ["aggregateRating", "rating", "imDbRating"]));
-    if (rating == null && ratingField != null && typeof ratingField === "object") {
-      rating = toNum(pick(ratingField, ["aggregateRating", "rating", "imDbRating"]));
-    }
-    if (rating == null) {
-      rating = toNum(pick(data, ["aggregateRating", "imDbRating", "imdbRating"]));
-    }
-    if (rating == null && typeof ratingField === "number") rating = ratingField;
-
-    // Poster: primaryImage/image/poster as object {url|imageUrl|contentUrl}
-    // or plain string URL.
-    let poster = pick(data, ["primaryImage", "image", "poster"]);
-    if (poster != null && typeof poster === "object") {
-      poster = poster.url || poster.imageUrl || poster.contentUrl;
-    }
-
-    return {
-      id: id,
-      title: typeof title === "string" ? title : null,
-      year: year,
-      rating: rating,
-      posterUrl: typeof poster === "string" ? poster : null,
-    };
-  }
 
   // Pull the JSON-LD block out of an IMDb title page.
   function extractLdJson(html) {
@@ -226,9 +174,34 @@
   const BACKOFF_BASE = 1500; // ms (exponential)
   const BACKOFF_CAP = 6000; // ms (per-attempt ceiling)
   const BACKOFF_JITTER = 500; // ms (randomized)
+  const RETRY_AFTER_CAP = 15000; // ms — never stall the queue on a huge hint
 
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  // Rotate the proxy list so each caller starts at a different proxy. The
+  // queue launches fetches in parallel slots; rotation is what keeps those
+  // parallel requests off the same proxy.
+  let rotation = 0;
+  function rotatedProxies() {
+    const offset = rotation++ % PROXIES.length;
+    return PROXIES.slice(offset).concat(PROXIES.slice(0, offset));
+  }
+
+  // `Retry-After` is either delta-seconds or an HTTP-date. Returns ms, or null
+  // when the header is missing/unparseable (caller falls back to backoff).
+  function retryAfterMs(res) {
+    const headers = res && res.headers;
+    const raw = headers && typeof headers.get === "function"
+      ? headers.get("Retry-After") || headers.get("retry-after")
+      : null;
+    if (raw == null) return null;
+    const seconds = Number(String(raw).trim());
+    if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+    const at = Date.parse(String(raw));
+    if (!Number.isFinite(at)) return null;
+    return Math.max(0, at - Date.now());
   }
 
   function backoff(attempt) {
@@ -260,7 +233,12 @@
           if (!res.ok) {
             errors.push(new Error(url + " responded " + res.status));
             if (isRetryable(res.status) && attempt < RETRIES) {
-              await sleep(backoff(attempt));
+              // Respect the server's own hint when it gives one; otherwise
+              // back off on our own schedule. Both are capped.
+              const hint = retryAfterMs(res);
+              await sleep(
+                hint == null ? backoff(attempt) : Math.min(hint, RETRY_AFTER_CAP)
+              );
               attempt += 1;
               continue;
             }
@@ -286,7 +264,7 @@
 
   // Provider 1: IMDb suggestion API via proxies (title/year/poster only).
   async function fetchFromSuggestion(id, doFetch) {
-    const urls = PROXIES.map((wrap) => wrap(SUGGESTION_URL(id)));
+    const urls = rotatedProxies().map((wrap) => wrap(SUGGESTION_URL(id)));
     return tryProxies(
       urls,
       async (res) => {
@@ -300,7 +278,7 @@
 
   // Provider 2: IMDb page JSON-LD via proxies (adds the rating).
   async function fetchFromImdbPage(id, doFetch) {
-    const urls = PROXIES.map((wrap) => wrap(PAGE_URL(id)));
+    const urls = rotatedProxies().map((wrap) => wrap(PAGE_URL(id)));
     return tryProxies(
       urls,
       async (res) => {
@@ -312,26 +290,25 @@
     );
   }
 
-  // Provider 3: legacy api.imdbapi.dev (offline since July 2026; instant
-  // DNS failure when dead, so it costs nothing to keep as last resort).
-  async function fetchFromImdbapiDev(id, doFetch) {
-    const res = await withTimeout(doFetch, API_BASE + encodeURIComponent(id));
-    if (!res.ok) throw new Error("IMDb API responded " + res.status);
-    const normalized = normalizeTitle(id, await res.json());
-    if (!hasAnyField(normalized)) {
-      throw new Error("IMDb API returned no usable fields");
-    }
-    return normalized;
-  }
-
-  // Proxy races wrap failures in AggregateError; surface the most specific
-  // (non-race) error for message clarity.
+  // Provider failures arrive wrapped in AggregateError (one per proxy chain).
+  // Flatten to the first leaf error so callers — and the toast the visitor
+  // reads — see the real cause ("responded 404"), not "All proxies failed".
   function pickError(errors) {
-    return (
-      errors.find(
-        (e) => typeof AggregateError === "undefined" || !(e instanceof AggregateError)
-      ) || errors[0]
-    );
+    const leaves = [];
+    const walk = (e) => {
+      if (!e) return;
+      const isAggregate =
+        typeof AggregateError !== "undefined" &&
+        e instanceof AggregateError &&
+        Array.isArray(e.errors);
+      if (isAggregate) {
+        for (const inner of e.errors) walk(inner);
+      } else {
+        leaves.push(e);
+      }
+    };
+    for (const e of errors) walk(e);
+    return leaves[0] || errors[0] || new Error("All IMDb providers failed");
   }
 
   async function fetchTitle(id, fetchImpl) {
@@ -340,7 +317,7 @@
     if (typeof doFetch !== "function") {
       throw new Error("No fetch implementation available");
     }
-    const providers = [fetchFromSuggestion, fetchFromImdbPage, fetchFromImdbapiDev];
+    const providers = [fetchFromSuggestion, fetchFromImdbPage];
     const errors = [];
     for (const provider of providers) {
       try {
@@ -355,7 +332,6 @@
   const api = {
     extractImdbIds,
     fetchTitle,
-    normalizeTitle,
     normalizeLd,
     normalizeSuggestion,
     extractLdJson,

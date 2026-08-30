@@ -17,48 +17,61 @@
   >
   <link rel="stylesheet" href="styles.css">
   <script src="imdb.js" defer></script>
+  <script src="queue.js" defer></script>
   <script src="board.js" defer></script>
   <script src="gist.js" defer></script>
   <script src="winner.js" defer></script>
+  <script src="topbar.js" defer></script>
+  <script src="toast.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
 <!--
-  THESIS: A movie-night shortlist as a dark glass panel — six films float on frosted glass over a deep gradient lit by ambient glow, votes are the only light source, and the leader's pane glows; it refuses the dark streaming grid and every dated skin this page has worn before.
-  OWN-WORLD: deep tinted dark gradient ground with indigo ambient blobs; frosted glass panels (translucent white fill, backdrop blur, hairline border, top-edge highlight); one electric-cyan neon accent for votes, the winner, and focus; Sora display over Archivo body.
-  STORY: Visitors land on a dark glass board, see the six-film shortlist ranked by votes, peek scores in frosted chips, open a trailer in a new tab, and vote — the counter ticks, the leader's pane glows, and the winner takes the night.
-  FIRST VIEWPORT: a frosted hero panel with the live winner's poster in a clear well and "Tonight's shortlist" in Sora over a cyan kicker; the glass board begins immediately below, six panes in a 3x2 grid, the leader glowing cyan.
-  FORM: user-pinned direction "modern darkmode with glassmorphism" (pinned; no concept roll), carrying the spatial-rank discipline: vote extent renders as a counter ring and the winner's pane takes the glow.
+  THESIS: A movie-night shortlist as a dark amber glass panel — nine films float on frosted glass over a deep warm-night gradient lit by ambient ember glow, votes are the only light source, and the leader's pane carries the accent; it refuses the dark streaming grid and every dated skin this page has worn before.
+  OWN-WORLD: deep warm-tinted dark gradient ground with amber ambient blobs; frosted glass panels (translucent white fill, backdrop blur, hairline border, top-edge highlight); one amber accent for votes, the winner, and focus; Sora display over Archivo body.
+  STORY: Visitors land on a dark glass board, see the shortlist, add films from a link or a gist, and vote — the navbar's missing-votes pill ticks down, the budget bar fills, and the winner comes when they call it.
+  FIRST VIEWPORT: a frosted navbar carrying the board count, the missing-votes pill and the reveal button; a two-column hero with the pitch on the left and the budget/add/import controls stacked on the right; the glass board begins immediately below.
+  FORM: user-pinned direction "modern glass orange" (per the supplied mockup), carrying the spatial-rank discipline: vote extent renders as a counter ring and the winner's pane takes the accent.
   FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
 -->
   <a class="skip-link" href="#movie-grid">Skip to the shortlist</a>
 
   <header class="site-head">
     <div class="site-head__inner glass">
-      <a class="brand" href="#top" aria-label="The Shortlist — home">
-        <span class="brand__mark" aria-hidden="true">★</span>
-        <span class="brand__name">The Shortlist</span>
-      </a>
-      <p class="site-head__tag">vote for tonight's feature</p>
+      <div class="site-head__brand">
+        <a class="brand" href="#top" aria-label="The Shortlist — home">
+          <span class="brand__mark" aria-hidden="true">★</span>
+          <span class="brand__name">The Shortlist</span>
+        </a>
+        <p class="site-head__tag">vote for tonight's feature</p>
+        <span class="chip chip--count" id="board-count-chip" aria-live="polite">0 / 9</span>
+      </div>
+      <div class="site-head__status">
+        <span class="pill" id="votes-pill" aria-live="polite">
+          <span class="pill__dot" aria-hidden="true"></span>
+          <span class="pill__label" id="votes-pill-label">10 votes missing</span>
+        </span>
+        <button class="navbar__reveal" id="show-winner" type="button" disabled>
+          <span aria-hidden="true">🏆</span> Show winner
+        </button>
+      </div>
     </div>
   </header>
 
   <main id="top">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero__panel glass">
-        <p class="hero__kicker">six films · one pick</p>
+        <p class="hero__kicker">nine slots · one pick</p>
         <h1 id="hero-title" class="hero__title">Tonight's shortlist</h1>
-        <p class="hero__slab">VOTES RANK THE BOARD · THE WINNER TAKES THE NIGHT</p>
+        <p class="hero__slab">VOTE QUIETLY · THE WINNER COMES WHEN YOU CALL IT</p>
         <p class="hero__lede">
-          Paste an IMDb link or import a .txt of links, then cast your vote.
-          The winner stays secret until you reveal the night's film.
+          Paste an IMDb link or import a gist of links, set your vote budget,
+          then cast. The winner stays hidden until you reveal the night's film.
         </p>
         <a class="hero__cta" href="#movie-grid">Build the shortlist</a>
       </div>
-    </section>
 
-    <section class="board" aria-labelledby="board-title">
-      <div class="controls">
+      <div class="hero__tools">
         <section class="ctl glass" aria-labelledby="ctl-budget-title">
           <p class="ctl__kicker" id="ctl-budget-title">Vote budget</p>
           <div class="ctl__body">
@@ -71,8 +84,19 @@
               <button class="budget__btn" id="budget-plus" type="button" aria-label="More votes">
                 <span aria-hidden="true">+</span>
               </button>
-              <span class="budget__remaining" id="budget-remaining" aria-live="polite"></span>
             </div>
+            <div
+              class="budget__progress"
+              id="budget-progress"
+              role="progressbar"
+              aria-label="Votes given"
+              aria-valuemin="0"
+              aria-valuemax="10"
+              aria-valuenow="0"
+            >
+              <span class="budget__bar" id="budget-bar"></span>
+            </div>
+            <p class="budget__remaining" id="budget-remaining" aria-live="polite"></p>
           </div>
         </section>
 
@@ -93,12 +117,8 @@
         </section>
 
         <section class="ctl glass" aria-labelledby="ctl-import-title">
-          <p class="ctl__kicker" id="ctl-import-title">Import</p>
+          <p class="ctl__kicker" id="ctl-import-title">Import from GitHub gist</p>
           <div class="ctl__body ctl__body--import">
-            <label class="adder__file" id="file-label">
-              Import .txt
-              <input id="txt-input" type="file" accept=".txt,text/plain" hidden>
-            </label>
             <div class="gist">
               <label class="adder__label" for="gist-input">Gist URL</label>
               <input
@@ -113,35 +133,25 @@
             </div>
           </div>
         </section>
-
-        <section class="ctl glass ctl--status" aria-labelledby="ctl-status-title">
-          <p class="ctl__kicker" id="ctl-status-title">Status</p>
-          <div class="ctl__body ctl__body--status">
-            <p class="adder__feedback" id="adder-feedback" role="status" aria-live="polite"></p>
-            <span class="adder__count" id="board-count" aria-live="polite">0 / 9</span>
-            <button class="adder__clear" id="clear-all" type="button" disabled>Clear all</button>
-          </div>
-        </section>
       </div>
+    </section>
 
-      <div class="board__head glass">
+    <section class="board" aria-labelledby="board-title">
+      <div class="board__tools">
         <div class="board__headline">
           <h2 id="board-title" class="board__title">The Shortlist</h2>
           <p class="board__note" id="board-note" aria-live="polite">
-            Vote with your budget — the leader wears the glow.
+            Build tonight's shortlist — paste an IMDb link or import a file.
           </p>
         </div>
+        <button class="board__clear" id="clear-all" type="button" disabled>Clear all</button>
       </div>
 
       <ol id="movie-grid" class="menu" aria-label="Movie shortlist"></ol>
-
-      <section class="reveal glass" aria-label="Reveal the winner">
-        <button class="board__show-winner" id="show-winner" type="button">
-          <span aria-hidden="true">🎉</span> Show the winner
-        </button>
-      </section>
     </section>
   </main>
+
+  <div class="toast-region" id="toast-region" aria-live="polite"></div>
 
   <div class="modal" id="clear-modal" hidden>
     <div class="modal__scrim" data-close></div>

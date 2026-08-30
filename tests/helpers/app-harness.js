@@ -14,6 +14,15 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { jest } from "@jest/globals";
+// The DOM suites eval app.js against globalThis, so every window.* module it
+// reaches for has to be attached here, in dependency order.
+import "../../imdb.js";
+import "../../queue.js";
+import "../../board.js";
+import "../../gist.js";
+import "../../winner.js";
+import "../../topbar.js";
+import "../../toast.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..", "..");
@@ -28,14 +37,17 @@ const BODY = BODY_MATCH ? BODY_MATCH[1] : "";
 // reskin) fails loudly here instead of silently degrading the UI suites.
 export const REQUIRED_IDS = [
   "movie-grid",
-  "show-winner",
+  "show-winner", // the navbar reveal control
   "winner-modal",
   "clear-modal",
   "budget-value",
+  "budget-progress",
   "adder-form",
   "gist-import",
-  "adder-feedback",
-  "board-count",
+  "toast-region",
+  "board-count-chip",
+  "votes-pill",
+  "votes-pill-label",
   "clear-all",
   "board-note",
 ];
@@ -50,11 +62,21 @@ export function setupDom() {
   }
 }
 
-export function makeResponse(status, body) {
+export function makeResponse(status, body, headers) {
   const ok = status >= 200 && status < 300;
+  const map = typeof headers === "function" ? headers() : headers;
+  const lookup = (name) => {
+    if (!map) return null;
+    const key = String(name).toLowerCase();
+    for (const k of Object.keys(map)) {
+      if (k.toLowerCase() === key) return map[k];
+    }
+    return null;
+  };
   return {
     ok,
     status,
+    headers: { get: lookup },
     json: () => Promise.resolve(body),
     text: () =>
       Promise.resolve(typeof body === "string" ? body : JSON.stringify(body)),
@@ -78,20 +100,86 @@ export function unwrapProxy(url) {
 
 // Build a router: routes matched in order; `body` may be a function(target).
 // Default (no match) answers 502 so an unmocked network touch fails loudly.
+//
+// A route may carry `defer: true`, which returns a promise the TEST resolves
+// (via `router.pending(n)`), so concurrency can be observed deterministically
+// instead of by racing real timers.
 export function createFetchRouter(routes = []) {
   const callLog = [];
+  const pending = [];
+  let inFlight = 0;
+  let peakInFlight = 0;
+  const begin = () => {
+    inFlight += 1;
+    if (inFlight > peakInFlight) peakInFlight = inFlight;
+    return () => {
+      inFlight -= 1;
+    };
+  };
   const fn = (url, opts) => {
     const target = unwrapProxy(url);
+    const settle = begin();
     callLog.push({ url, target, opts });
-    for (const r of routes) {
-      if (r.test(target)) {
-        const body = typeof r.body === "function" ? r.body(target) : r.body;
-        return Promise.resolve(makeResponse(r.status, body));
+    const route = routes.find((r) => r.test(target));
+    const body = route
+      ? typeof route.body === "function"
+        ? route.body(target)
+        : route.body
+      : { error: "no route for " + target };
+    // `status` and `headers` may be functions of the target, so a route can
+    // answer 429-then-200 and exercise retry paths.
+    const deliver = () =>
+      makeResponse(
+        route
+          ? typeof route.status === "function"
+            ? route.status(target)
+            : route.status
+          : 502,
+        body,
+        route ? route.headers : null
+      );
+    if (route && route.defer) {
+      let release;
+      const gate = new Promise((resolve) => {
+        release = resolve;
+      });
+      pending.push({ target, release, released: false });
+      return gate.then(() => {
+        settle();
+        return deliver();
+      });
+    }
+    return Promise.resolve().then(() => {
+      settle();
+      return deliver();
+    });
+  };
+  const router = { fn, callLog, pending };
+  // Resolve the n-th deferred request (0-based, in call order) with its route.
+  router.resolve = (n) => {
+    const entry = pending[n];
+    if (!entry) throw new Error("no deferred request at index " + n);
+    entry.released = true;
+    entry.release();
+    return Promise.resolve();
+  };
+  // Resolve every deferred request that has not been released yet.
+  router.resolveAll = () => {
+    for (const entry of pending) {
+      if (!entry.released) {
+        entry.released = true;
+        entry.release();
       }
     }
-    return Promise.resolve(makeResponse(502, { error: "no route for " + target }));
+    return Promise.resolve();
   };
-  return { fn, callLog };
+  router.inFlight = () => inFlight;
+  router.peakInFlight = () => peakInFlight;
+  router.resetCounters = () => {
+    inFlight = 0;
+    peakInFlight = 0;
+  };
+  return router;
 }
 
 export function installFetch(router) {

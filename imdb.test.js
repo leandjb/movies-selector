@@ -1,6 +1,7 @@
 import "./imdb.js";
+import { jest } from "@jest/globals";
 
-const { extractImdbIds, normalizeTitle, normalizeSuggestion, fetchTitle } =
+const { extractImdbIds, normalizeSuggestion, fetchTitle } =
   globalThis.Imdb;
 
 describe("extractImdbIds", () => {
@@ -45,88 +46,6 @@ describe("extractImdbIds", () => {
   });
 });
 
-describe("normalizeTitle", () => {
-  it("maps the expected fields", () => {
-    const d = {
-      primaryTitle: "Her",
-      startYear: 2013,
-      rating: { aggregateRating: 8.0 },
-      primaryImage: { url: "https://img/x.jpg" },
-    };
-    expect(normalizeTitle("tt1234567", d)).toEqual({
-      id: "tt1234567",
-      title: "Her",
-      year: 2013,
-      rating: 8.0,
-      posterUrl: "https://img/x.jpg",
-    });
-  });
-
-  it("falls back through alternate field names", () => {
-    const d = {
-      originalTitle: "Arrival",
-      releaseDate: "2016-11-11",
-      imdbRating: 7.9,
-      image: "https://img/y.jpg",
-    };
-    expect(normalizeTitle("tt2222222", d)).toEqual({
-      id: "tt2222222",
-      title: "Arrival",
-      year: 2016,
-      rating: 7.9,
-      posterUrl: "https://img/y.jpg",
-    });
-  });
-
-  it("returns nulls for missing fields", () => {
-    const r = normalizeTitle("tt3333333", {});
-    expect(r.title).toBeNull();
-    expect(r.year).toBeNull();
-    expect(r.rating).toBeNull();
-    expect(r.posterUrl).toBeNull();
-  });
-
-  it("returns null when data is not an object", () => {
-    expect(normalizeTitle("tt3333333", null)).toBeNull();
-  });
-
-  it("maps the real IMDbAPI nested shape (titleText/ratings/releaseDate/primaryImage)", () => {
-    const d = {
-      id: "tt1375666",
-      titleType: "movie",
-      titleText: { text: "Inception", original: "Inception" },
-      originalTitleText: { text: "Inception", original: "Inception" },
-      ratings: { aggregateRating: 8.8, voteCount: 2500000 },
-      releaseDate: { day: 16, month: 7, year: 2010 },
-      primaryImage: { url: "https://img/inception.jpg" },
-    };
-    expect(normalizeTitle("tt1375666", d)).toEqual({
-      id: "tt1375666",
-      title: "Inception",
-      year: 2010,
-      rating: 8.8,
-      posterUrl: "https://img/inception.jpg",
-    });
-  });
-
-  it("maps JSON-LD from the IMDb page fallback", () => {
-    const ld = {
-      "@type": "Movie",
-      name: "Crimson Tide",
-      image: "https://m.media-amazon.com/x.jpg",
-      datePublished: "1995-05-12",
-      aggregateRating: { ratingValue: 7.3, ratingCount: 1000 },
-    };
-    expect(globalThis.Imdb.normalizeLd("tt0118881", ld)).toEqual({
-      id: "tt0118881",
-      title: "Crimson Tide",
-      year: 1995,
-      rating: 7.3,
-      posterUrl: "https://m.media-amazon.com/x.jpg",
-    });
-  });
-});
-
 describe("normalizeSuggestion", () => {
   it("maps the suggestion entry matching the id", () => {
     const data = {
@@ -151,6 +70,23 @@ describe("normalizeSuggestion", () => {
     expect(r.posterUrl).toBeNull();
   });
 
+  it("maps JSON-LD from the IMDb page fallback", () => {
+    const ld = {
+      "@type": "Movie",
+      name: "Crimson Tide",
+      image: "https://m.media-amazon.com/x.jpg",
+      datePublished: "1995-05-12",
+      aggregateRating: { ratingValue: 7.3, ratingCount: 1000 },
+    };
+    expect(globalThis.Imdb.normalizeLd("tt0118881", ld)).toEqual({
+      id: "tt0118881",
+      title: "Crimson Tide",
+      year: 1995,
+      rating: 7.3,
+      posterUrl: "https://m.media-amazon.com/x.jpg",
+    });
+  });
+
   it("returns null without a d array", () => {
     expect(normalizeSuggestion("tt0118881", {})).toBeNull();
     expect(normalizeSuggestion("tt0118881", null)).toBeNull();
@@ -163,6 +99,35 @@ const LD_HTML =
 const isPageUrl = (u) =>
   u.includes("imdb.com%2Ftitle") || u.includes("imdb.com/title");
 const isSuggestionUrl = (u) => u.includes("suggestion");
+
+// Which proxy in Imdb.PROXIES order wrapped a URL (0-based): replay each
+// wrapper against the known suggestion URL and match the exact result.
+const proxyIndexOf = (u, id) => {
+  const { PROXIES } = globalThis.Imdb;
+  const target =
+    "https://v3.sg.media-imdb.com/suggestion/x/" + id + ".json";
+  for (let i = 0; i < PROXIES.length; i += 1) {
+    if (PROXIES[i](target) === u) return i;
+  }
+  return -1;
+};
+
+const suggestionOk = () => ({
+  ok: true,
+  json: async () => ({
+    d: [{ id: "tt0118881", l: "Her", y: 2013, i: { imageUrl: "https://img/her.jpg" } }],
+  }),
+});
+
+// Records every URL tried, in order, before finally answering.
+const recorder = (answer) => {
+  const seen = [];
+  const fake = async (url) => {
+    seen.push(url);
+    return answer(url, seen.length);
+  };
+  return { fake, seen };
+};
 
 const fail = (status) => ({
   ok: false,
@@ -230,24 +195,146 @@ describe("fetchTitle", () => {
     expect(d.title).toBe("Her");
   });
 
-  it("uses the legacy API as the last resort", async () => {
-    const fake = async (url) => {
-      if (url.includes("api.imdbapi.dev")) {
-        return {
-          ok: true,
-          json: async () => ({
-            titleText: { text: "Inception" },
-            ratings: { aggregateRating: 8.8 },
-            releaseDate: { year: 2010 },
-            primaryImage: { url: "https://img/z.jpg" },
-          }),
-        };
-      }
-      return fail(403);
-    };
-    const d = await fetchTitle("tt1375666", fake);
-    expect(d.title).toBe("Inception");
-    expect(d.rating).toBe(8.8);
+  it("rotates the starting proxy across successive fetches", async () => {
+    const id = "tt0118881";
+    const { fake, seen } = recorder((url) =>
+      isSuggestionUrl(url) ? suggestionOk() : fail(403)
+    );
+    await fetchTitle(id, fake);
+    await fetchTitle(id, fake);
+    await fetchTitle(id, fake);
+
+    // Each fetch succeeds on its first attempt, so the suggestion URLs seen
+    // are exactly the starting proxy of each fetch. Rotation state is shared
+    // by earlier tests in this file, so assert the cycle, not the offset:
+    // each fetch starts one proxy further along, wrapping around.
+    const starters = seen.filter(isSuggestionUrl).map((u) => proxyIndexOf(u, id));
+    const total = globalThis.Imdb.PROXIES.length;
+    expect(starters).toHaveLength(3);
+    expect(starters.every((i) => i >= 0 && i < total)).toBe(true);
+    expect(starters[1]).toBe((starters[0] + 1) % total);
+    expect(starters[2]).toBe((starters[1] + 1) % total);
+  });
+
+  it("honors Retry-After seconds on a 429 before retrying", async () => {
+    jest.useFakeTimers();
+    try {
+      let hits = 0;
+      const fake = async (url) => {
+        if (!isSuggestionUrl(url)) return fail(403);
+        hits += 1;
+        if (hits === 1) {
+          return {
+            ok: false,
+            status: 429,
+            headers: { get: (h) => (h.toLowerCase() === "retry-after" ? "7" : null) },
+            text: async () => "",
+            json: async () => ({}),
+          };
+        }
+        return suggestionOk();
+      };
+      const p = fetchTitle("tt0118881", fake);
+      await jest.advanceTimersByTimeAsync(6500);
+      expect(hits).toBe(1); // still waiting out Retry-After
+      await jest.advanceTimersByTimeAsync(1000);
+      const d = await p;
+      expect(d.title).toBe("Her");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("honors a Retry-After HTTP-date", async () => {
+    jest.useFakeTimers();
+    try {
+      let hits = 0;
+      const fake = async (url) => {
+        if (!isSuggestionUrl(url)) return fail(403);
+        hits += 1;
+        if (hits === 1) {
+          // HTTP-dates are whole seconds: ceil so the delta is >= 5000 ms
+          // rather than up to a second short.
+          const later = new Date(
+            Math.ceil((Date.now() + 5000) / 1000) * 1000
+          ).toUTCString();
+          return {
+            ok: false,
+            status: 429,
+            headers: { get: (h) => (h.toLowerCase() === "retry-after" ? later : null) },
+            text: async () => "",
+            json: async () => ({}),
+          };
+        }
+        return suggestionOk();
+      };
+      const p = fetchTitle("tt0118881", fake);
+      await jest.advanceTimersByTimeAsync(4900);
+      expect(hits).toBe(1);
+      await jest.advanceTimersByTimeAsync(1200);
+      await expect(p).resolves.toMatchObject({ title: "Her" });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("caps an absurd Retry-After at the documented ceiling", async () => {
+    jest.useFakeTimers();
+    try {
+      let hits = 0;
+      const fake = async (url) => {
+        if (!isSuggestionUrl(url)) return fail(403);
+        hits += 1;
+        if (hits === 1) {
+          return {
+            ok: false,
+            status: 429,
+            headers: { get: (h) => (h.toLowerCase() === "retry-after" ? "600" : null) },
+            text: async () => "",
+            json: async () => ({}),
+          };
+        }
+        return suggestionOk();
+      };
+      const p = fetchTitle("tt0118881", fake);
+      // 600 s hint, capped: still waiting at 14.5 s, retried by 15.1 s.
+      await jest.advanceTimersByTimeAsync(14500);
+      expect(hits).toBe(1);
+      await jest.advanceTimersByTimeAsync(600);
+      expect(hits).toBe(2);
+      await jest.advanceTimersByTimeAsync(0);
+      await expect(p).resolves.toMatchObject({ title: "Her" });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("falls back to backoff when Retry-After is missing", async () => {
+    jest.useFakeTimers();
+    try {
+      let hits = 0;
+      const fake = async (url) => {
+        if (!isSuggestionUrl(url)) return fail(403);
+        hits += 1;
+        if (hits === 1) return fail(429);
+        return suggestionOk();
+      };
+      const p = fetchTitle("tt0118881", fake);
+      await jest.advanceTimersByTimeAsync(1400);
+      expect(hits).toBe(1);
+      await jest.advanceTimersByTimeAsync(600);
+      await expect(p).resolves.toMatchObject({ title: "Her" });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("never calls the dead api.imdbapi.dev provider", async () => {
+    const { fake, seen } = recorder((url) =>
+      isSuggestionUrl(url) ? suggestionOk() : fail(403)
+    );
+    await fetchTitle("tt0118881", fake);
+    expect(seen.some((u) => u.includes("api.imdbapi.dev"))).toBe(false);
   });
 
   it("throws the most specific error when every provider fails", async () => {
@@ -262,14 +349,16 @@ describe("fetchTitle", () => {
     await expect(fetchTitle("tt1234567", fake)).rejects.toThrow(/network down/);
   });
 
-  it("treats an unusable legacy payload as a failure", async () => {
-    const fake = async (url) => {
-      if (url.includes("api.imdbapi.dev")) {
-        return { ok: true, json: async () => ({ id: "tt0118881" }) };
-      }
-      return fail(403);
+  it("throws the most specific error when every provider fails", async () => {
+    const fake = async () => fail(404);
+    await expect(fetchTitle("tt1234567", fake)).rejects.toThrow(/404/);
+  });
+
+  it("throws when the network fetch rejects everywhere", async () => {
+    const fake = async () => {
+      throw new Error("network down");
     };
-    await expect(fetchTitle("tt0118881", fake)).rejects.toThrow();
+    await expect(fetchTitle("tt1234567", fake)).rejects.toThrow(/network down/);
   });
 
   it("extracts JSON-LD even when the script tag has extra attributes", () => {

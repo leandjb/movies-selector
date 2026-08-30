@@ -97,12 +97,12 @@
     "data:image/svg+xml," +
     encodeURIComponent(
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600">` +
-        `<rect width="400" height="600" fill="#0d1017"/>` +
+        `<rect width="400" height="600" fill="#14100c"/>` +
         `<rect x="22" y="22" width="356" height="556" rx="14" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>` +
         `<circle cx="200" cy="240" r="80" fill="none" stroke="rgba(62,225,255,0.6)" stroke-width="3" stroke-dasharray="10 14"/>` +
-        `<text x="200" y="252" text-anchor="middle" font-family="sans-serif" font-size="30" fill="#3ee1ff" letter-spacing="6">★</text>` +
-        `<text x="200" y="430" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#eef1f6" letter-spacing="4">NO POSTER</text>` +
-        `<text x="200" y="462" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#9aa4b2">the print hasn't arrived yet</text>` +
+        `<text x="200" y="252" text-anchor="middle" font-family="sans-serif" font-size="30" fill="#f5a524" letter-spacing="6">★</text>` +
+        `<text x="200" y="430" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#f6f1ea" letter-spacing="4">NO POSTER</text>` +
+        `<text x="200" y="462" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#b0a698">the print hasn't arrived yet</text>` +
         `</svg>`
     );
 
@@ -119,16 +119,19 @@
   const boardNote = document.getElementById("board-note");
   const budgetValue = document.getElementById("budget-value");
   const budgetRemaining = document.getElementById("budget-remaining");
+  const budgetProgress = document.getElementById("budget-progress");
+  const budgetBar = document.getElementById("budget-bar");
   const showWinnerBtn = document.getElementById("show-winner");
   const adderForm = document.getElementById("adder-form");
   const adderInput = document.getElementById("imdb-input");
   const adderAdd = document.getElementById("adder-add");
-  const txtInput = document.getElementById("txt-input");
   const gistInput = document.getElementById("gist-input");
   const gistImportBtn = document.getElementById("gist-import");
-  const boardCount = document.getElementById("board-count");
+  const boardCountChip = document.getElementById("board-count-chip");
+  const votesPill = document.getElementById("votes-pill");
+  const votesPillLabel = document.getElementById("votes-pill-label");
   const clearAllBtn = document.getElementById("clear-all");
-  const feedback = document.getElementById("adder-feedback");
+  const toastRegion = document.getElementById("toast-region");
   const modal = document.getElementById("clear-modal");
   const modalCount = document.getElementById("clear-modal-count");
   const clearConfirm = document.getElementById("clear-confirm");
@@ -168,9 +171,15 @@
         </div>
         <div class="menu__meta">
           <h3 class="menu__title">${esc(titleText)}</h3>
-          <p class="menu__year">${yearText}</p>
           <div class="menu__badges">
             <span class="badge badge--imdb">${scoreOrDash(movie.rating)}</span>
+            <span class="badge badge--year">${esc(yearText)}</span>
+            <a
+              class="badge badge--link"
+              href="https://www.imdb.com/title/${esc(movie.id)}/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >IMDb <span aria-hidden="true">↗</span></a>
           </div>
         </div>
         <div class="menu__vote">
@@ -212,7 +221,7 @@
       grid.innerHTML = `
         <li class="menu__empty" role="status">
           <h3>Your shortlist is empty</h3>
-          <p>Paste an IMDb link above or import a .txt file to build tonight's feature.</p>
+          <p>Paste an IMDb link above or import a gist to build tonight's feature.</p>
         </li>`;
     } else {
       grid.innerHTML = movies
@@ -228,12 +237,12 @@
 
     const empty = movies.length === 0;
     boardNote.textContent = empty
-      ? "Build tonight's shortlist — paste an IMDb link or import a file."
+      ? "Build tonight's shortlist — paste an IMDb link or import a gist."
       : "Allocate your votes quietly — the winner comes out when you call it.";
 
-    boardCount.textContent = `${board.count()} / ${MAX_CARDS}`;
     clearAllBtn.disabled = empty;
     showWinnerBtn.disabled = empty;
+    renderTopbar();
 
     const full = board.isFull();
     adderAdd.disabled = full;
@@ -256,6 +265,32 @@
     }
   }
 
+  // ---- Navbar status + budget progress ------------------------------------
+
+  // The navbar is the page's status surface: board count, missing votes, and
+  // whether the reveal can be used. All arithmetic lives in topbar.js.
+  function renderTopbar() {
+    const model = window.Topbar.view({
+      budget: state.budget,
+      allocated: totalAllocated(),
+      count: board.count(),
+      limit: MAX_CARDS,
+    });
+
+    boardCountChip.textContent = model.chip;
+
+    votesPillLabel.textContent = model.pill.label;
+    votesPill.classList.toggle("pill--ready", model.pill.state === "ready");
+    votesPill.classList.toggle("pill--missing", model.pill.state === "missing");
+    votesPill.setAttribute("aria-label", model.pill.ariaLabel);
+
+    const given = Math.min(state.budget, totalAllocated());
+    const pct = state.budget > 0 ? Math.round((given / state.budget) * 100) : 0;
+    budgetBar.style.width = pct + "%";
+    budgetProgress.setAttribute("aria-valuemax", String(state.budget));
+    budgetProgress.setAttribute("aria-valuenow", String(given));
+  }
+
   // In-place update of a single card after hydration (no full re-render,
   // so other cards don't replay their entrance animation).
   function hydrateCard(id) {
@@ -269,8 +304,10 @@
     if (titleEl)
       titleEl.textContent =
         m.title || (m.status === "error" ? "Unavailable" : "—");
-    const yearEl = li.querySelector(".menu__year");
-    if (yearEl) yearEl.textContent = m.year != null ? String(m.year) : "—";
+    const yearBadge = li.querySelector(".badge--year");
+    if (yearBadge) {
+      yearBadge.textContent = m.year != null ? String(m.year) : "—";
+    }
     const badge = li.querySelector(".badge--imdb");
     if (badge) badge.textContent = scoreOrDash(m.rating);
     li.classList.remove("menu__card--loading");
@@ -280,13 +317,15 @@
    * Feedback
    * ------------------------------------------------------------------ */
 
+  // Every user-facing message now goes through one channel: the toast region.
+  const toaster = window.Toaster.createToaster({ container: toastRegion });
+
   function showFeedback(message, isError) {
-    feedback.textContent = message;
-    feedback.classList.toggle("adder__feedback--error", Boolean(isError));
+    toaster.show(message, { type: isError ? "error" : "info" });
   }
 
   // One-line human summary of an add/import result, shared by paste,
-  // TXT file, and gist imports.
+  // paste, and gist imports.
   function summaryText(summary) {
     const added = summary.addedIds.length;
     const parts = [];
@@ -315,42 +354,35 @@
   }
 
   /* ------------------------------------------------------------------
-   * Add pipeline (paste + TXT)
+   * Add pipeline (paste + gist)
    * ------------------------------------------------------------------ */
 
-  // All hydration flows through one serial queue (concurrency 1) with a short
-  // randomized gap between movies, so a bulk import doesn't burst-rate the
-  // CORS proxies (see resilient-metadata-fetch design).
-  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  const hydrateQueue = (() => {
-    let tail = Promise.resolve();
-    function enqueue(job) {
-      tail = tail.then(async () => {
-        try {
-          await job();
-        } catch {
-          /* hydrateOne handles its own failures */
-        } finally {
-          await sleep(300 + Math.random() * 500);
-        }
-      });
-      return tail;
-    }
-    return { enqueue };
-  })();
+  // All hydration flows through one queue with a small bounded concurrency
+  // (one slot per proxy) and a paced gap between launches, so a bulk import is
+  // quick without burst-rating any single CORS proxy. Requests are deduped and
+  // cached per session by movie id (see the metadata-fetch spec).
+  const hydrateQueue = window.Queue.createQueue({
+    worker: (id) => window.Imdb.fetchTitle(id),
+    concurrency: window.Imdb.PROXIES.length,
+    gap: 150,
+    jitter: 250,
+  });
 
-  async function hydrateOne(id) {
-    if (!board.hasId(id)) return; // removed before hydration started
-    try {
-      const details = await window.Imdb.fetchTitle(id);
-      if (!board.hasId(id)) return; // removed while awaiting
-      board.hydrate(id, details);
-      hydrateCard(id);
-    } catch {
-      if (!board.hasId(id)) return;
-      board.hydrate(id, null);
-      hydrateCard(id);
-    }
+  // The queue owns the network call, so a failed fetch rejects (and is never
+  // cached); the board + card update happens in the handlers here.
+  function enqueueHydration(id) {
+    return hydrateQueue.enqueue(id, id).then(
+      (details) => {
+        if (!board.hasId(id)) return; // removed while awaiting
+        board.hydrate(id, details);
+        hydrateCard(id);
+      },
+      () => {
+        if (!board.hasId(id)) return;
+        board.hydrate(id, null);
+        hydrateCard(id);
+      }
+    );
   }
 
   async function handleAdd(rawValue) {
@@ -358,7 +390,7 @@
     render();
     summarize(summary);
     for (const id of summary.addedIds) {
-      hydrateQueue.enqueue(() => hydrateOne(id));
+      enqueueHydration(id);
     }
     return summary;
   }
@@ -369,18 +401,6 @@
     if (!value) return;
     handleAdd(value);
     adderInput.value = "";
-  });
-
-  txtInput.addEventListener("change", (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      handleAdd(String(reader.result || ""));
-    };
-    reader.onerror = () => showFeedback("Could not read that file.", true);
-    reader.readAsText(file);
-    e.target.value = ""; // allow re-selecting the same file
   });
 
   /* ------------------------------------------------------------------
@@ -653,7 +673,7 @@
     render();
     const unresolved = board.needsHydration();
     for (const m of unresolved) {
-      hydrateQueue.enqueue(() => hydrateOne(m.id));
+      enqueueHydration(m.id);
     }
   })();
 })();
