@@ -1,5 +1,5 @@
-import "./imdb.js";
-import "./board.js";
+import "../../src/imdb.js";
+import "../../src/board.js";
 
 const { createBoard } = globalThis.Board;
 const extract = globalThis.Imdb.extractImdbIds;

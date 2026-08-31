@@ -1,4 +1,4 @@
-import "./gist.js";
+import "../../src/gist.js";
 
 const { parseGistRef, fetchGistText } = globalThis.Gist;
 

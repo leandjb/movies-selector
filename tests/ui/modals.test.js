@@ -1,9 +1,9 @@
 /** @jest-environment jsdom */
 import { jest } from "@jest/globals";
-import "./imdb.js";
-import "./board.js";
-import "./gist.js";
-import "./winner.js";
+import "../../src/imdb.js";
+import "../../src/board.js";
+import "../../src/gist.js";
+import "../../src/winner.js";
 import {
   loadApp,
   installFetch,
@@ -11,7 +11,7 @@ import {
   flushHydration,
   createFetchRouter,
   suggestionSuccessRoute,
-} from "./tests/helpers/app-harness.js";
+} from "../helpers/app-harness.js";
 
 let router;
 

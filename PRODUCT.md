@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Static HTML/CSS/JS — plain `index.html`, `styles.css`, `app.js`, `movies.js`. No framework, no build step, no backend (confirmed by the user; YAGNI).
+Static HTML/CSS/JS — plain `index.html`, `styles.css`, `src/` (`imdb.js`, `queue.js`, `board.js`, `gist.js`, `winner.js`, `topbar.js`, `toast.js`, `app.js`) and `tests/` (`unit/`, `api/`, `integration/`, `ui/`, `helpers/`). No framework, no build step, no backend (confirmed by the user; YAGNI).
 
 ## Users
 
@@ -16,27 +16,27 @@ Friends and housemates picking what to watch on movie night. They land on one pa
 
 ## Product Purpose
 
-A single landing page that ranks a curated catalog of great movies by visitor votes. Browsing matters as much as voting: each movie card shows the poster, title, year, IMDb score, Rotten Tomatoes score, and a playable trailer, and votes decide the order.
+A single landing page where visitors build a 9-movie shortlist from IMDb links and vote. Browsing matters as much as voting: each movie card shows the poster, title, year, and an IMDb link, and votes decide the winner.
 
 ## Positioning
 
-A crowd-ranked, curated movie catalog where the scores and trailers make the browsing itself the case for each film. The page doesn't fetch anything — every score, poster, and trailer is hand-curated, so the ranking is honest and the page loads instantly.
+A crowd-ranked shortlist where the IMDb poster, title, and year make the browsing itself the case for each film. The page fetches metadata at runtime from the IMDb suggestion API (direct-first, proxy fallback), so the shortlist is live and the page loads instantly.
 
 ## Operating Context
 
 - One static page, opened directly in a browser or served from any static host.
 - Votes persist per browser via `localStorage`; no accounts, no server round-trip.
-- Trailers play in an in-page modal; a "Watch on YouTube" fallback covers videos that disallow embedding.
-- The grid re-sorts live by net score (upvotes minus downvotes).
+- IMDb metadata is fetched at runtime (direct suggestion API, fallback proxies) and hydrated into cards; failed fetches show placeholders.
+- The grid stays in insertion order; the winner is decided on reveal via vote tally.
 
 ## Capabilities and Constraints
 
-- Movie cards show: poster, title, year, IMDb score (x.x/10), Rotten Tomatoes score (%), YouTube trailer button.
+- Movie cards show: poster, title, year, IMDb link (fetched live).
 - Up/down voting with toggle semantics (vote once per movie per browser; clicking again removes the vote).
-- Grid ranked by net score, highest first, stable tie-break.
-- Curated static data only — no runtime APIs, no API keys, no live data fetching.
+- Grid in insertion order; winner decided on reveal via vote tally.
+- Fetches IMDb metadata at runtime via the suggestion API (direct request, then rotated proxy fallback with bounded retries; see `metadata-fetch` spec).
 - Vanilla HTML/CSS/JS; no framework, bundler, or runtime dependencies (deliberate YAGNI).
-- Undecided: the exact movie roster and poster URLs — chosen during implementation, safe to change later.
+- Board persists per browser via `localStorage`; gist import merges into the current board.
 
 ## Brand Commitments
 
@@ -46,15 +46,15 @@ Visual direction pinned by the user: **modern glass orange** (frosted glass pane
 
 ## Evidence on Hand
 
-- The curated catalog itself (movies.js) is the only real content; scores are hand-entered reference values.
-- No testimonials, press, user data, or imagery beyond the poster/trailer URLs — future work must not fabricate any of these.
+- The board is built live from IMDb links; posters/titles/years are fetched at runtime and cached per session.
+- No testimonials, press, user data, or imagery beyond the poster URLs — future work must not fabricate any of these.
 
 ## Product Principles
 
-1. Browsing is the pitch — posters, scores, and trailers must carry the case for each movie.
+1. Browsing is the pitch — posters, titles, and years must carry the case for each movie.
 2. The ranking is the point — voting is one click and the order updates instantly.
 3. No friction — no accounts, no sign-up, no server; open the page and vote.
-4. Honest curation — scores and picks are curated by hand; never silently fetch or fake data.
+4. Honest data — metadata is fetched live from IMDb; never fake titles, years, or posters.
 5. Fast and light — vanilla files, zero dependencies, loads anywhere.
 
 ## Accessibility & Inclusion

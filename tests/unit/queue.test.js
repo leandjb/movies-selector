@@ -1,4 +1,4 @@
-import "./queue.js";
+import "../../src/queue.js";
 import { jest } from "@jest/globals";
 
 const { createQueue } = globalThis.Queue;

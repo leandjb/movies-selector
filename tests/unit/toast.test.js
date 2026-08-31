@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import "./toast.js";
+import "../../src/toast.js";
 import { jest } from "@jest/globals";
 
 const { createToaster } = globalThis.Toaster;

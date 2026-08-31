@@ -1,9 +1,9 @@
 /** @jest-environment jsdom */
 import { jest } from "@jest/globals";
-import "./imdb.js";
-import "./board.js";
-import "./gist.js";
-import "./winner.js";
+import "../../src/imdb.js";
+import "../../src/board.js";
+import "../../src/gist.js";
+import "../../src/winner.js";
 import {
   loadApp,
   installFetch,
@@ -11,9 +11,8 @@ import {
   flushHydration,
   createFetchRouter,
   suggestionSuccessRoute,
-  jsonLdRoute,
   statusRoute,
-} from "./tests/helpers/app-harness.js";
+} from "../helpers/app-harness.js";
 
 let router;
 
@@ -79,37 +78,25 @@ describe("Movie cards", () => {
     ).toEqual({});
   });
 
-  test("score badge shows the correct rating when metadata provides one", async () => {
-    // suggestion fails for A -> JSON-LD fallback supplies A's rating.
-    // A's 404 must come first: the router matches routes in order, so the
-    // catch-all suggestion-success route would otherwise swallow it.
-    router = installFetch(
-      createFetchRouter([
-        statusRoute("v3.sg.media-imdb.com/suggestion/x/tt0111161", 404),
-        jsonLdRoute("tt0111161", { title: "Rated Movie", year: 2019, rating: 8.4 }),
-        suggestionSuccessRoute(),
-      ])
-    );
-    await addAndHydrate("tt0111161"); // A: rating via JSON-LD fallback
-    await addAndHydrate("tt0111162"); // B: suggestion success -> no rating
-    const badgeA = document.querySelector(
-      '.menu__card[data-id="tt0111161"] .badge--imdb'
-    );
-    const badgeB = document.querySelector(
-      '.menu__card[data-id="tt0111162"] .badge--imdb'
-    );
-    expect(badgeA.textContent.trim()).toBe("8.4");
-    // per-movie binding: B keeps its placeholder, never A's score
-    expect(badgeB.textContent.trim()).toBe("—");
+  test("hydrated card shows a year badge and an IMDb link, never a rating badge", async () => {
+    await addAndHydrate("tt0111161");
+    const card = document.querySelector('.menu__card[data-id="tt0111161"]');
+    expect(card.querySelector(".badge--imdb")).toBeNull();
+    expect(card.querySelector(".badge--year")).not.toBeNull();
+    expect(card.querySelector(".badge--link")).not.toBeNull();
   });
 
-  test("score badge renders the em dash placeholder when there is no rating", async () => {
-    await addAndHydrate("tt0111161");
-    const badge = document.querySelector(
-      '.menu__card[data-id="tt0111161"] .badge--imdb'
+  test("failed hydration shows the year placeholder and keeps the IMDb link", async () => {
+    installFetch(
+      createFetchRouter([statusRoute("suggestion", 500, { error: "nope" })])
     );
-    // suggestion API carries no rating -> renders "—"
-    expect(badge.textContent.trim()).toBe("—");
+    await addAndHydrate("tt0111161");
+    const card = document.querySelector('.menu__card[data-id="tt0111161"]');
+    expect(card.querySelector(".badge--year").textContent.trim()).toBe("—");
+    // the IMDb link is buildable from the id, so it renders regardless
+    expect(card.querySelector(".badge--link")).not.toBeNull();
+    // and still no rating badge
+    expect(card.querySelector(".badge--imdb")).toBeNull();
   });
 
   test("badge row shows the year once hydrated", async () => {
@@ -120,18 +107,7 @@ describe("Movie cards", () => {
     expect(year.textContent.trim()).toBe("2021");
   });
 
-  test("badge row year placeholder survives a failed hydration", async () => {
-    installFetch(
-      createFetchRouter([statusRoute("suggestion", 500, { error: "nope" })])
-    );
-    await addAndHydrate("tt0111161");
-    const card = document.querySelector('.menu__card[data-id="tt0111161"]');
-    expect(card.querySelector(".badge--year").textContent.trim()).toBe("—");
-    // the IMDb link is buildable from the id, so it renders regardless
-    expect(card.querySelector(".badge--link")).not.toBeNull();
-  });
-
-  test("badge row links to the movie's IMDb page in a new tab", async () => {
+  test("badge row link opens the movie's IMDb page in a new tab", async () => {
     await addAndHydrate("tt0111161");
     const link = document.querySelector(
       '.menu__card[data-id="tt0111161"] .badge--link'

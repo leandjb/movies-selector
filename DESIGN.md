@@ -217,7 +217,7 @@ Soft, contemporary geometry: hero panels at 26px radius, cards at 22px, control 
 - **Vote (+/−):** frosted square, white glyph. Hover: glyph + border go amber. Active: amber fill, amber-ink glyph — the vote snaps into the accent.
 - **Focus:** solid 3px amber outline, 3px offset (never a blurred glow ring).
 ### Chips (score badges)
-- Frosted pills with a hairline border. Rating: amber star with warm-white digits. Year: muted digits. A trailing "IMDb ↗" pill link opens the title page in a new tab. Missing score: muted "—".
+- Frosted pills with a hairline border. Year: muted digits. A trailing "IMDb ↗" pill link opens the title page in a new tab. No rating badge is rendered.
 
 ### Cards / Containers (frosted panes)
 - **Corner Style:** 22px.

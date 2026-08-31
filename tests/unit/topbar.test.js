@@ -1,4 +1,4 @@
-import "./topbar.js";
+import "../../src/topbar.js";
 
 const { missingVotes, pill, countChip, view } = globalThis.Topbar;
 

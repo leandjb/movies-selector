@@ -1,55 +1,56 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-15T00:00:00.000Z",
+  "generatedAt": "2026-08-30T00:00:00.000Z",
   "title": "Design System: The Shortlist",
   "extensions": {
     "colorMeta": {
       "accent": {
         "role": "primary",
-        "displayName": "Electric Cyan",
-        "canonical": "#3ee1ff",
+        "displayName": "Amber",
+        "canonical": "#f5a524",
         "tonalRamp": [
-          "#0ea5c9",
-          "rgba(62, 225, 255, 0.12)",
-          "rgba(62, 225, 255, 0.16)",
-          "rgba(62, 225, 255, 0.3)",
-          "rgba(62, 225, 255, 0.35)",
-          "rgba(62, 225, 255, 0.45)",
-          "rgba(62, 225, 255, 0.5)",
-          "rgba(62, 225, 255, 0.55)",
-          "rgba(62, 225, 255, 0.6)",
-          "rgba(62, 225, 255, 0.8)",
-          "#6ff0ff"
+          "#d97706",
+          "rgba(245, 165, 36, 0.05)",
+          "rgba(245, 165, 36, 0.08)",
+          "rgba(245, 165, 36, 0.1)",
+          "rgba(245, 165, 36, 0.12)",
+          "rgba(245, 165, 36, 0.16)",
+          "rgba(245, 165, 36, 0.32)",
+          "rgba(245, 165, 36, 0.5)",
+          "rgba(245, 165, 36, 0.6)",
+          "rgba(255, 200, 87, 0.16)",
+          "#ffc857"
         ]
       },
-      "accent-ink": { "role": "primary", "displayName": "Cyan Ink", "canonical": "#052b33" },
-      "bg-deep": { "role": "neutral", "displayName": "Night Deep", "canonical": "#07090d" },
-      "bg-mid": { "role": "neutral", "displayName": "Night Mid", "canonical": "#0d1017" },
-      "glass-fill": { "role": "neutral", "displayName": "Glass Fill", "canonical": "rgba(255, 255, 255, 0.06)" },
-      "glass-border": { "role": "neutral", "displayName": "Glass Border", "canonical": "rgba(255, 255, 255, 0.14)" },
-      "text": { "role": "neutral", "displayName": "Warm White", "canonical": "#eef1f6" },
-      "text-muted": { "role": "neutral", "displayName": "Muted Warm", "canonical": "#9aa4b2" }
+      "accent-ink": { "role": "primary", "displayName": "Amber Ink", "canonical": "#241300" },
+      "bg-deep": { "role": "neutral", "displayName": "Ember Deep", "canonical": "#0a0806" },
+      "bg-mid": { "role": "neutral", "displayName": "Ember Mid", "canonical": "#14100c" },
+      "glass-fill": { "role": "neutral", "displayName": "Glass Fill", "canonical": "rgba(245, 165, 36, 0.05)" },
+      "glass-border": { "role": "neutral", "displayName": "Glass Border", "canonical": "rgba(255, 200, 87, 0.16)" },
+      "text": { "role": "neutral", "displayName": "Warm White", "canonical": "#f6f1ea" },
+      "text-muted": { "role": "neutral", "displayName": "Muted Warm", "canonical": "#b0a698" }
     },
     "typographyMeta": {
       "display": { "displayName": "Announcement", "purpose": "Hero title — Sora 800." },
       "title": { "displayName": "Section & Card Titles", "purpose": "Board title and movie titles." },
-      "label": { "displayName": "Labels & Actions", "purpose": "Kickers, buttons, badges, chips — uppercase Sora." },
-      "body": { "displayName": "Fine Print", "purpose": "Lede, notes, footer — Archivo." }
+      "label": { "displayName": "Labels & Actions", "purpose": "Kickers, buttons, badges, chips, status pill — uppercase Sora." },
+      "body": { "displayName": "Fine Print", "purpose": "Lede, notes, footer, toasts — Archivo." }
     },
     "shadows": [
       { "name": "glass-rest", "value": "0 18px 40px rgba(0, 0, 0, 0.45)", "purpose": "Frosted panes at rest." },
       { "name": "glass-hover", "value": "0 26px 60px rgba(0, 0, 0, 0.55)", "purpose": "Pane hover lift." },
-      { "name": "accent-glow", "value": "0 0 0 1px rgba(62, 225, 255, 0.45), 0 0 28px rgba(62, 225, 255, 0.35)", "purpose": "The winner's pane; breathes on winner-pulse." }
+      { "name": "reveal-lift", "value": "0 26px 60px rgba(0, 0, 0, 0.55)", "purpose": "Navbar reveal button hover; neutral, never a colored glow." }
     ],
     "motion": [
       { "name": "ease-out-quint", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "All transitions and entrances; never bounce." },
       { "name": "card-in", "value": "0.5s ease-out (opacity 0→1, translateY 16px→0)", "purpose": "Panes settling into the board; disabled after the first vote." },
-      { "name": "winner-pulse", "value": "2.8s ease-in-out infinite alternate (glow 22px→36px)", "purpose": "The winner's light breathing." }
+      { "name": "pill-breathe", "value": "2.4s ease-in-out infinite alternate (dot opacity 0.45→1)", "purpose": "The missing-votes dot breathing while votes are owed." },
+      { "name": "toast-in", "value": "0.28s ease-out (opacity 0→1, translateY 8px→0)", "purpose": "Toasts sliding into the corner." }
     ],
     "breakpoints": [
       { "name": "wide", "value": "1120px", "purpose": "Container max-width." },
-      { "name": "lg", "value": "1020px", "purpose": "Grid 3→2, hero stacks, winner card becomes a row." },
-      { "name": "sm", "value": "640px", "purpose": "Grid 2→1, winner card becomes a column, tagline hides." }
+      { "name": "lg", "value": "1020px", "purpose": "Grid 3→2, hero stacks to one column." },
+      { "name": "sm", "value": "640px", "purpose": "Grid 2→1, tagline hides, board tools stack." }
     ]
   },
   "components": [
@@ -57,80 +58,103 @@
       "name": "Vote Button",
       "kind": "button",
       "refersTo": "button-vote",
-      "description": "Frosted square; snaps into cyan when pressed.",
+      "description": "Frosted square; snaps into amber when pressed.",
       "html": "<button class=\"ds-vote\" aria-pressed=\"false\" aria-label=\"Upvote\"><span aria-hidden=\"true\">+</span></button>",
-      "css": ".ds-vote{width:2.5rem;height:2.5rem;padding:0;display:grid;place-items:center;font-family:Sora,sans-serif;font-size:1.2rem;font-weight:600;color:#eef1f6;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:12px;cursor:pointer;transition:color .2s cubic-bezier(.22,1,.36,1),border-color .2s,background .2s,box-shadow .2s}.ds-vote:hover{color:#3ee1ff;border-color:rgba(62,225,255,.5)}.ds-vote[aria-pressed='true']{color:#052b33;background:linear-gradient(180deg,#6ff0ff,#3ee1ff);border-color:rgba(255,255,255,.35);box-shadow:0 0 18px rgba(62,225,255,.5)}"
+      "css": ".ds-vote{width:2.5rem;height:2.5rem;padding:0;display:grid;place-items:center;font-family:Sora,sans-serif;font-size:1.2rem;font-weight:600;color:#f6f1ea;background:rgba(245,165,36,.05);border:1px solid rgba(255,200,87,.16);border-radius:12px;cursor:pointer;transition:color .2s cubic-bezier(.22,1,.36,1),border-color .2s,background .2s}.ds-vote:hover{color:#f5a524;border-color:rgba(245,165,36,.5)}.ds-vote[aria-pressed='true']{color:#241300;background:linear-gradient(180deg,#ffc857,#f5a524);border-color:rgba(255,255,255,.35)}"
     },
     {
-      "name": "Trailer Link",
+      "name": "Navbar Reveal",
       "kind": "button",
-      "refersTo": "button-trailer",
-      "description": "Opens the YouTube trailer in a new tab.",
-      "html": "<a class=\"ds-trailer\" href=\"https://www.youtube.com/watch?v=1Fg5iWmQjwk\" target=\"_blank\" rel=\"noopener noreferrer\">▶ Trailer</a>",
-      "css": ".ds-trailer{display:inline-flex;align-items:center;gap:.45rem;padding:.5rem .95rem;font-family:Sora,sans-serif;font-weight:600;font-size:.82rem;letter-spacing:.05em;text-transform:uppercase;color:#eef1f6;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:999px;text-decoration:none;transition:transform .2s cubic-bezier(.22,1,.36,1),border-color .2s,color .2s}.ds-trailer::before{content:'\\25B6';font-size:.6rem;color:#3ee1ff}.ds-trailer:hover{transform:translateY(-2px);border-color:#3ee1ff;color:#3ee1ff}"
+      "refersTo": "button-reveal",
+      "description": "Amber pill in the navbar that opens the winner modal; disabled on an empty board.",
+      "html": "<button class=\"ds-reveal\" type=\"button\"><span aria-hidden=\"true\">🏆</span> Show winner</button>",
+      "css": ".ds-reveal{display:inline-flex;align-items:center;gap:.45rem;padding:.5rem 1.05rem;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:linear-gradient(180deg,#ffc857,#f5a524);color:#241300;font-family:Sora,sans-serif;font-weight:700;font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}.ds-reveal:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 26px 60px rgba(0,0,0,.55)}.ds-reveal:disabled{opacity:.45;cursor:not-allowed}"
     },
     {
-      "name": "Score Badge",
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "pill-status",
+      "description": "Navbar pill counting unallocated votes; inverts to a solid amber ready state.",
+      "html": "<span class=\"ds-pill ds-pill--missing\"><span class=\"ds-pill-dot\" aria-hidden=\"true\"></span>3 votes missing</span>",
+      "css": ".ds-pill{display:inline-flex;align-items:center;gap:.45rem;padding:.34rem .8rem;border-radius:999px;border:1px solid rgba(255,200,87,.16);background:rgba(255,255,255,.07);font-family:Sora,sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#f6f1ea}.ds-pill-dot{width:.5rem;height:.5rem;border-radius:50%;background:#f5a524}.ds-pill--ready{color:#241300;background:linear-gradient(180deg,#ffc857,#f5a524);border-color:rgba(255,255,255,.35)}"
+    },
+    {
+      "name": "Year Badge",
       "kind": "chip",
       "refersTo": "badge",
-      "description": "Frosted pill for a rating score.",
-      "html": "<span class=\"ds-badge\">🍅 92%</span>",
-      "css": ".ds-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.24rem .6rem;border-radius:999px;font-family:Sora,sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.02em;color:#eef1f6;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14)}"
+      "description": "Frosted pill for the release year.",
+      "html": "<span class=\"ds-badge ds-badge--year\">2013</span>",
+      "css": ".ds-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.24rem .6rem;border-radius:999px;font-family:Sora,sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.02em;color:#f6f1ea;background:rgba(255,255,255,.07);border:1px solid rgba(255,200,87,.16)}"
     },
     {
       "name": "Frosted Pane",
       "kind": "card",
       "refersTo": "card-pane",
-      "description": "A movie card: glass over night, winner variant glows cyan.",
-      "html": "<article class=\"ds-pane\"><div class=\"ds-pane-rank\">3</div><div class=\"ds-pane-poster\"></div><h3 class=\"ds-pane-title\">Her</h3><div class=\"ds-pane-badges\"><span class=\"ds-badge\">🍅 94%</span></div></article>",
-      "css": ".ds-pane{position:relative;display:flex;flex-direction:column;border-radius:22px;padding:.8rem;background:linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.06));-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 18px 40px rgba(0,0,0,.45);transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s,border-color .3s}.ds-pane:hover{transform:translateY(-4px);border-color:rgba(255,255,255,.24);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 26px 60px rgba(0,0,0,.55)}.ds-pane-rank{position:absolute;top:1.1rem;left:1.1rem;min-width:1.7rem;padding:.2rem .5rem;text-align:center;font-family:Sora,sans-serif;font-weight:600;font-size:.8rem;color:#9aa4b2;background:rgba(10,13,19,.55);border:1px solid rgba(255,255,255,.14);border-radius:10px}.ds-pane-poster{aspect-ratio:2/3;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.1)}.ds-pane-title{margin:.8rem 0 0;font-family:Sora,sans-serif;font-weight:700;font-size:1.12rem;line-height:1.15;letter-spacing:-.01em;color:#eef1f6}.ds-pane-badges{display:flex;gap:.5rem;margin-top:.7rem}"
+      "description": "A movie card: warm glass over ember night, winner variant takes the amber border.",
+      "html": "<article class=\"ds-pane\"><div class=\"ds-pane-rank\">3</div><div class=\"ds-pane-poster\"></div><h3 class=\"ds-pane-title\">Her</h3><div class=\"ds-pane-badges\"><span class=\"ds-badge ds-badge--year\">2013</span><a class=\"ds-badge ds-badge--link\" href=\"https://www.imdb.com/title/tt1798709/\" target=\"_blank\" rel=\"noopener noreferrer\">IMDb ↗</a></div></article>",
+      "css": ".ds-pane{position:relative;display:flex;flex-direction:column;border-radius:22px;padding:.8rem;background:linear-gradient(160deg,rgba(245,165,36,.08),rgba(245,165,36,.05));-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);border:1px solid rgba(255,200,87,.16);box-shadow:inset 0 1px 0 rgba(255,200,87,.12),0 18px 40px rgba(0,0,0,.45);transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s,border-color .3s}.ds-pane:hover{transform:translateY(-4px);border-color:rgba(255,255,255,.24);box-shadow:inset 0 1px 0 rgba(255,200,87,.12),0 26px 60px rgba(0,0,0,.55)}.ds-pane-rank{position:absolute;top:1.1rem;left:1.1rem;min-width:1.7rem;padding:.2rem .5rem;text-align:center;font-family:Sora,sans-serif;font-weight:600;font-size:.8rem;color:#b0a698;background:rgba(20,14,8,.55);border:1px solid rgba(255,200,87,.16);border-radius:10px}.ds-pane-poster{aspect-ratio:2/3;border-radius:14px;border:1px solid rgba(255,200,87,.16);background:rgba(245,165,36,.05)}.ds-pane-title{margin:.8rem 0 0;font-family:Sora,sans-serif;font-weight:700;font-size:1.12rem;line-height:1.15;letter-spacing:-.01em;color:#f6f1ea}.ds-pane-badges{display:flex;gap:.5rem;margin-top:.7rem}"
     },
     {
       "name": "Hero CTA",
       "kind": "button",
       "refersTo": "button-cta",
       "description": "The single action of the page.",
-      "html": "<a class=\"ds-cta\" href=\"#movie-grid\">Start voting</a>",
-      "css": ".ds-cta{display:inline-block;padding:.85rem 1.7rem;font-family:Sora,sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.04em;text-decoration:none;color:#052b33;background:linear-gradient(180deg,#6ff0ff,#3ee1ff);border:1px solid rgba(255,255,255,.35);border-radius:999px;box-shadow:0 0 24px rgba(62,225,255,.35);transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}.ds-cta:hover{transform:translateY(-2px);box-shadow:0 0 36px rgba(62,225,255,.55)}"
+      "html": "<a class=\"ds-cta\" href=\"#movie-grid\">Build the shortlist</a>",
+      "css": ".ds-cta{display:inline-block;padding:.85rem 1.7rem;font-family:Sora,sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.04em;text-decoration:none;color:#241300;background:linear-gradient(180deg,#ffc857,#f5a524);border:1px solid rgba(255,255,255,.35);border-radius:999px;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}.ds-cta:hover{transform:translateY(-2px);box-shadow:0 26px 60px rgba(0,0,0,.55)}"
+    },
+    {
+      "name": "Budget Progress",
+      "kind": "custom",
+      "description": "Frosted track with an amber fill showing how much of the budget is given.",
+      "html": "<div class=\"ds-progress\" role=\"progressbar\" aria-label=\"Votes given\" aria-valuemin=\"0\" aria-valuemax=\"10\" aria-valuenow=\"3\"><span class=\"ds-progress-bar\" style=\"width:30%\"></span></div>",
+      "css": ".ds-progress{margin-top:.7rem;height:.4rem;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden}.ds-progress-bar{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#d97706,#ffc857);transition:width .35s cubic-bezier(.22,1,.36,1)}"
+    },
+    {
+      "name": "Toast",
+      "kind": "custom",
+      "description": "Frosted transient message in the corner live region.",
+      "html": "<div class=\"ds-toast\" role=\"status\"><span class=\"ds-toast-text\">Added 3 movies</span><button class=\"ds-toast-close\" aria-label=\"Dismiss this message\">×</button></div>",
+      "css": ".ds-toast{display:flex;align-items:flex-start;gap:.7rem;padding:.7rem .9rem;border-radius:14px;background:linear-gradient(160deg,rgba(245,165,36,.08),rgba(245,165,36,.05));-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);border:1px solid rgba(255,200,87,.16);box-shadow:inset 0 1px 0 rgba(255,200,87,.12),0 18px 40px rgba(0,0,0,.45);color:#f6f1ea;font-size:.9rem;animation:toast-in .28s cubic-bezier(.22,1,.36,1)}.ds-toast--error{border-color:#f5a524}@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}"
     },
     {
       "name": "The Counter",
       "kind": "custom",
-      "description": "Frosted ring whose arc sweeps the vote share; glowing cyan digits.",
+      "description": "Frosted ring whose arc sweeps the vote share; amber digits.",
       "html": "<div class=\"ds-counter\" aria-hidden=\"true\"><svg viewBox=\"0 0 40 40\"><circle class=\"ds-counter-track\" cx=\"20\" cy=\"20\" r=\"15.5\"></circle><circle class=\"ds-counter-arc\" cx=\"20\" cy=\"20\" r=\"15.5\" stroke-dasharray=\"60 97\"></circle></svg><span class=\"ds-counter-score\">104</span></div>",
-      "css": ".ds-counter{position:relative;width:3.2rem;height:3.2rem}.ds-counter svg{width:100%;height:100%;transform:rotate(-90deg)}.ds-counter .ds-counter-arc{fill:none;stroke:#3ee1ff;stroke-width:4;stroke-linecap:round}.ds-counter .ds-counter-track{fill:none;stroke:rgba(255,255,255,.16);stroke-width:3}.ds-counter-score{position:absolute;inset:0;display:grid;place-items:center;font-family:Sora,sans-serif;font-weight:700;font-size:.98rem;color:#3ee1ff;text-shadow:0 0 12px rgba(62,225,255,.6)}"
+      "css": ".ds-counter{position:relative;width:3.2rem;height:3.2rem}.ds-counter svg{width:100%;height:100%;transform:rotate(-90deg)}.ds-counter .ds-counter-arc{fill:none;stroke:#f5a524;stroke-width:4;stroke-linecap:round}.ds-counter .ds-counter-track{fill:none;stroke:rgba(255,255,255,.16);stroke-width:3}.ds-counter-score{position:absolute;inset:0;display:grid;place-items:center;font-family:Sora,sans-serif;font-weight:700;font-size:.98rem;color:#f5a524}"
     }
   ],
   "narrative": {
-    "northStar": "Glass Over Night",
-    "overview": "A movie-night shortlist rendered as frosted glass panes floating over a deep, tinted night gradient lit by ambient glow. Six films hang on the board as translucent cards; the leader's pane glows electric cyan; voting is the only light the visitor controls. The world refuses both the streaming-grid rut and every decorated skin this page has worn before — no chrome, no amber, no diner, just dark glass, one neon accent, and a ranking that glows. Density is calm and modern: large frosted panels, generous radii, hairline glass borders, soft depth. Motion is a quiet rise-and-glow — panes settle into place, the winner's light breathes. Legibility is the discipline: every frosted surface stays dark enough behind text to hold ≥4.5:1, and posters sit in clear (unblurred) wells so artwork never fogs.",
+    "northStar": "Glass Over Embers",
+    "overview": "A movie-night shortlist rendered as frosted glass panes floating over a deep, warm-tinted night lit by ember glow. Films hang on the board as translucent cards; the status of the night lives in the navbar, not the page body; the winner's pane carries the accent when deliberately revealed. The world refuses both the streaming-grid rut and the cool violet glass this page wore before — no indigo, no chrome, just dark warm glass, one amber accent, and a reveal you call yourself. Density is calm and modern: large frosted panels, generous radii, hairline glass borders, soft depth. Motion is a quiet rise-and-glow — panes settle into place, the missing-votes pill breathes, toasts slide in from the corner. Legibility is the discipline: every frosted surface stays dark enough behind text to hold ≥4.5:1, and posters sit in clear (unblurred) wells so artwork never fogs.",
     "keyCharacteristics": [
-      "One accent: electric cyan. Everything else is white glass tints over warm-near-black.",
+      "One accent: amber. Everything else is amber/white glass tints over warm-near-black.",
       "Frosted panes: translucent white fills, backdrop blur, 1px hairline borders, a top-edge glass highlight.",
-      "The winner's pane glows and pulses; active votes snap into the accent.",
+      "Status lives up top: the navbar carries the board count, the missing-votes pill, and the reveal.",
+      "Feedback is transient: toasts in the corner, never a permanent status strip.",
       "Sora for display over Archivo body — geometric and modern, never Inter.",
-      "The dark is tinted (#07090d), never pure black."
+      "The dark is warm-tinted (#0a0806), never pure black and never cool gray."
     ],
     "rules": [
-      { "name": "The One Light Rule", "body": "Cyan appears only where a decision is live: an active vote, the winner's glow, focus, the CTA. Ambient blobs are atmosphere; they never carry UI.", "section": "colors" },
+      { "name": "The One Light Rule", "body": "Amber appears only where a decision is live: an active vote, the winner, focus, the CTA, the reveal, and the missing-votes pill. Ambient blobs are atmosphere; they never carry UI.", "section": "colors" },
       { "name": "The Frosted-Enough Rule", "body": "Every glass panel holding text keeps ≥4.5:1 contrast over the gradient; posters live in unblurred wells.", "section": "colors" },
-      { "name": "The Tinted Night Rule", "body": "The dark is always tinted (#07090d ground). Pure black and pure gray are banned.", "section": "colors" },
+      { "name": "The Warm Night Rule", "body": "The dark is always warm-tinted (#0a0806 ground). Pure black, cool gray, and blue-tinted darks are banned.", "section": "colors" },
       { "name": "The Two-Face Rule", "body": "Sora announces, Archivo explains. Never swap their jobs, and never add a third face.", "section": "typography" },
       { "name": "The Glass-Lip Rule", "body": "Every frosted pane has the inset top highlight — no highlight, it's a sticker, not glass.", "section": "elevation" },
-      { "name": "The No-Bounce Rule", "body": "All motion uses cubic-bezier(0.22,1,0.36,1). Panes rise, glows breathe, nothing bounces.", "section": "motion" }
+      { "name": "The No-Bounce Rule", "body": "All motion uses cubic-bezier(0.22,1,0.36,1). Panes rise, the pill breathes, toasts slide, nothing bounces.", "section": "motion" }
     ],
     "dos": [
-      "Do reserve cyan for live decisions — active votes, the winner's glow, focus, the CTA.",
+      "Do reserve amber for live decisions — active votes, the winner, focus, the CTA, the reveal, and the status pill.",
       "Do keep glass panels dark enough for ≥4.5:1 text contrast, and keep posters in unblurred wells.",
       "Do give every frosted pane its top-edge glass highlight.",
       "Do set announcements in Sora and body copy in Archivo.",
-      "Do ease with cubic-bezier(0.22,1,0.36,1); panes rise, glows breathe, nothing bounces."
+      "Do ease with cubic-bezier(0.22,1,0.36,1); panes rise, the pill breathes, toasts slide, nothing bounces."
     ],
     "donts": [
-      "Don't add a second saturated color — cyan is the one light; ambient blobs stay atmospheric.",
+      "Don't add a second saturated color — amber is the one light; ambient blobs stay atmospheric.",
       "Don't blur text-bearing glass until it's unreadable, or put posters behind blur.",
-      "Don't use pure black or pure gray — the night is tinted (#07090d).",
-      "Don't use Inter, system defaults, serifs, or purple-to-blue gradients anywhere.",
+      "Don't use pure black, cool gray, or blue-tinted darks — the night is warm (#0a0806).",
+      "Don't use Inter, system defaults, serifs, or violet-to-indigo gradients anywhere.",
       "Don't nest frosted panes inside frosted panes — one glass layer, then clear content."
     ]
   }

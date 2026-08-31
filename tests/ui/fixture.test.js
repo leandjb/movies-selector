@@ -1,5 +1,5 @@
 /** @jest-environment jsdom */
-import { REQUIRED_IDS, setupDom } from "./tests/helpers/app-harness.js";
+import { REQUIRED_IDS, setupDom } from "../helpers/app-harness.js";
 
 beforeEach(setupDom);
 

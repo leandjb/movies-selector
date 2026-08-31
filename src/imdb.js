@@ -5,39 +5,37 @@
  * (ESM module with no exports; attaches to globalThis.Imdb).
  *
  * ----------------------------------------------------------------------------
- * DATA SOURCE CONTRACT — provider chain (first usable result wins)
- *
- *   Proxies are tried SEQUENTIALLY, one at a time, and a failed attempt
- *   (429/408/5xx or network error) is retried with capped exponential backoff
- *   + jitter before the next proxy is tried. This keeps request volume low so
- *   bulk imports of many movies don't trip proxy rate limits (see
- *   resilient-metadata-fetch design).
+ * DATA SOURCE CONTRACT — direct-first, proxies as fallback (first usable wins)
  *
  *   1. IMDb suggestion API — https://v3.sg.media-imdb.com/suggestion/x/{id}.json
- *      (IMDb-owned, lightweight, not bot-blocked; NO CORS headers, so via
- *      proxies). Shape: { d: [{ id, l: title, y: year, i: { imageUrl } }] }.
- *      Tried FIRST: it is the lightest source and hydrates most movies with a
- *      single request. Provides title/year/poster; rating is unavailable and
- *      renders "—".
+ *      (IMDb-owned, lightweight, not bot-blocked; it SENDS
+ *      Access-Control-Allow-Origin, so the browser can call it directly with no
+ *      proxy — one request, ~86 ms measured on 2026-08-30). Shape:
+ *      { d: [{ id, l: title, y: year, i: { imageUrl } }] }. It provides
+ *      title/year/poster only — no rating.
  *
- *   2. IMDb title page JSON-LD — https://www.imdb.com/title/{id}/ embedded
- *      <script type="application/ld+json"> (name, image, datePublished,
- *      aggregateRating.ratingValue). Tried second, via proxies, only to add the
- *      rating (suggestion lacks it). IMDb blocks many server-side fetchers so
- *      this is a softer fallback.
+ *      This is fetched DIRECTLY first. The old premise ("NO CORS headers, so
+ *      via proxies") was wrong: measured live on 2026-08-30 the endpoint returns
+ *      ACAO echoing the caller's origin and answered in ~86 ms, while all three
+ *      proxies failed that same session (allorigins 500/520 after 13.4 s,
+ *      codetabs 522, cors.workers.dev 429). The proxies are a fallback only.
  *
- *   A response that yields no usable fields counts as a provider failure and
- *   moves the chain on. If every provider fails, the card degrades to
- *   placeholder dashes — never a crash or fabricated data.
+ *   2. IMDb title page JSON-LD — DELETED. It was WAF-blocked (HTTP 202 with a
+ *      zero-byte body direct, 522 through every proxy), so it never rendered a
+ *      rating anyway. Ratings are gone: no fetch, no badge, no normalization.
  *
- *   PROXY ROTATION: every fetch starts its proxy chain at a rotating offset, so
- *   consecutive fetches (including the parallel ones the hydration queue
- *   launches) spread across proxies instead of hammering the first one — see
- *   the metadata-fetch spec's bounded-concurrency requirement.
+ *   A response that yields no usable fields counts as a source failure and moves
+ *   the chain on. If every source fails, the card degrades to placeholder dashes
+ *   — never a crash or fabricated data.
  *
- *   RATE LIMITS: a 429 carrying `Retry-After` waits exactly that long (capped
- *   by RETRY_AFTER_CAP) before retrying; without the header it falls back to
- *   the capped exponential backoff.
+ *   PROXY ROTATION: every fallback chain starts at a rotating offset so parallel
+ *   hydration requests spread across proxies instead of hammering one (see the
+ *   metadata-fetch spec's bounded-concurrency requirement).
+ *
+ *   RATE LIMITS: a 429 carrying `Retry-After` waits exactly that long (capped by
+ *   RETRY_AFTER_CAP) before retrying the same proxy once. A gateway failure
+ *   (408/502/504) advances to the next source immediately. The per-movie request
+ *   budget is emergent: 1 direct + 3 proxies x 2 attempts = 7 worst case.
  * ----------------------------------------------------------------------------
  */
 (function (root) {
@@ -47,12 +45,11 @@
   // Bare tt-IDs are intentionally NOT accepted (spec requires a real link).
   const LINK_RE = /imdb\.com\/title\/(tt\d{7,10})/gi;
 
-  const PAGE_URL = (id) => "https://www.imdb.com/title/" + id + "/";
   const SUGGESTION_URL = (id) =>
     "https://v3.sg.media-imdb.com/suggestion/x/" + encodeURIComponent(id) + ".json";
 
-  // Keyless CORS proxies, tried sequentially (first win). corsproxy.io is
-  // dropped: keyless requests always 401, so every call was pure waste.
+  // Keyless CORS proxies, tried sequentially as a FALLBACK (first usable wins).
+  // corsproxy.io is dropped: keyless requests always 401, pure waste.
   const PROXIES = [
     (url) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
     (url) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url),
@@ -85,56 +82,7 @@
   }
 
   const hasAnyField = (n) =>
-    Boolean(n && (n.title || n.posterUrl || n.year != null || n.rating != null));
-
-  // Pull the JSON-LD block out of an IMDb title page.
-  function extractLdJson(html) {
-    const m =
-      /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i.exec(
-        html || ""
-      );
-    if (!m) return null;
-    try {
-      return JSON.parse(m[1].trim());
-    } catch {
-      return null;
-    }
-  }
-
-  function findTitleLd(parsed) {
-    if (!parsed || typeof parsed !== "object") return null;
-    const candidates = [];
-    if (Array.isArray(parsed)) candidates.push(...parsed);
-    else {
-      candidates.push(parsed);
-      if (Array.isArray(parsed["@graph"])) candidates.push(...parsed["@graph"]);
-    }
-    return (
-      candidates.find(
-        (c) => c && typeof c === "object" && c.name && c.aggregateRating
-      ) || null
-    );
-  }
-
-  function normalizeLd(id, parsed) {
-    const ld = findTitleLd(parsed);
-    if (!ld) return null;
-    const year = toNum(
-      typeof ld.datePublished === "string" ? ld.datePublished.slice(0, 4) : null
-    );
-    let poster = ld.image;
-    if (Array.isArray(poster)) poster = poster[0];
-    if (poster != null && typeof poster === "object") {
-      poster = poster.url || poster.contentUrl;
-    }
-    return {
-      id: id,
-      title: typeof ld.name === "string" ? ld.name : null,
-      year: year,
-      rating: toNum(ld.aggregateRating && ld.aggregateRating.ratingValue),
-      posterUrl: typeof poster === "string" ? poster : null,
-    };
-  }
+    Boolean(n && (n.title || n.posterUrl || n.year != null));
 
   // Suggestion API entry: { id, l: title, y: year, i: { imageUrl } }.
   function normalizeSuggestion(id, data) {
@@ -147,7 +95,6 @@
       id: id,
       title: typeof entry.l === "string" ? entry.l : null,
       year: toNum(entry.y),
-      rating: null, // the suggestion API carries no rating
       posterUrl: typeof poster === "string" ? poster : null,
     };
   }
@@ -170,7 +117,7 @@
   }
 
   // ---- Sequential proxy fallback with bounded retry ------------------------
-  const RETRIES = 2; // up to 3 attempts per proxy (1 + 2 retries)
+  const RETRIES = 1; // up to 2 attempts per proxy (1 initial + 1 retry)
   const BACKOFF_BASE = 1500; // ms (exponential)
   const BACKOFF_CAP = 6000; // ms (per-attempt ceiling)
   const BACKOFF_JITTER = 500; // ms (randomized)
@@ -180,9 +127,9 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  // Rotate the proxy list so each caller starts at a different proxy. The
-  // queue launches fetches in parallel slots; rotation is what keeps those
-  // parallel requests off the same proxy.
+  // Rotate the proxy list so each caller starts at a different proxy. The queue
+  // launches fetches in parallel slots; rotation is what keeps those parallel
+  // requests off the same proxy.
   let rotation = 0;
   function rotatedProxies() {
     const offset = rotation++ % PROXIES.length;
@@ -209,10 +156,10 @@
     return base + Math.random() * BACKOFF_JITTER;
   }
 
-  // Retry transient failures (rate limit / timeout / server error / network).
-  // A parse error or "no usable fields" result is NOT retried — move on.
-  function isRetryable(status) {
-    return status === 429 || status === 408 || (status >= 500 && status < 600);
+  // A gateway error (408/502/504) means the proxy itself is struggling — advance
+  // to the next source immediately rather than retrying a dead hop.
+  function isGateway(status) {
+    return status === 408 || status === 502 || status === 504;
   }
 
   function isNetworkError(err) {
@@ -221,9 +168,10 @@
   }
 
   // Try each proxy URL in order. On a retryable failure, wait `backoff(attempt)`
-  // and retry the SAME proxy before advancing. Resolves with the first usable
-  // normalized result; throws an AggregateError when every proxy is exhausted.
-  async function tryProxies(urls, parseBody, doFetch) {
+  // (or honor `Retry-After`) and retry the SAME proxy once before advancing.
+  // Resolves with the first usable normalized result; throws an AggregateError
+  // when every proxy is exhausted.
+  async function tryProxies(urls, id, doFetch) {
     const errors = [];
     for (const url of urls) {
       let attempt = 0;
@@ -232,24 +180,25 @@
           const res = await withTimeout(doFetch, url);
           if (!res.ok) {
             errors.push(new Error(url + " responded " + res.status));
-            if (isRetryable(res.status) && attempt < RETRIES) {
-              // Respect the server's own hint when it gives one; otherwise
-              // back off on our own schedule. Both are capped.
+            // Gateway failures: advance immediately, no retry.
+            if (isGateway(res.status)) break;
+            // Rate limited: retry once, honoring Retry-After (capped).
+            if (res.status === 429 && attempt < RETRIES) {
               const hint = retryAfterMs(res);
-              await sleep(
-                hint == null ? backoff(attempt) : Math.min(hint, RETRY_AFTER_CAP)
-              );
+              await sleep(hint == null ? backoff(attempt) : Math.min(hint, RETRY_AFTER_CAP));
               attempt += 1;
               continue;
             }
+            // Other non-OK (403/404/...): do not retry.
             break;
           }
-          const data = await parseBody(res);
+          const data = normalizeSuggestion(id, await res.json());
           if (hasAnyField(data)) return data;
           errors.push(new Error(url + " returned no usable data"));
           break;
         } catch (err) {
           errors.push(err);
+          // Network blips retry once; other throws give up on this source.
           if (isNetworkError(err) && attempt < RETRIES) {
             await sleep(backoff(attempt));
             attempt += 1;
@@ -260,34 +209,6 @@
       }
     }
     throw new AggregateError(errors, "All proxies failed");
-  }
-
-  // Provider 1: IMDb suggestion API via proxies (title/year/poster only).
-  async function fetchFromSuggestion(id, doFetch) {
-    const urls = rotatedProxies().map((wrap) => wrap(SUGGESTION_URL(id)));
-    return tryProxies(
-      urls,
-      async (res) => {
-        const n = normalizeSuggestion(id, await res.json());
-        if (!hasAnyField(n)) throw new Error("no usable suggestion fields");
-        return n;
-      },
-      doFetch
-    );
-  }
-
-  // Provider 2: IMDb page JSON-LD via proxies (adds the rating).
-  async function fetchFromImdbPage(id, doFetch) {
-    const urls = rotatedProxies().map((wrap) => wrap(PAGE_URL(id)));
-    return tryProxies(
-      urls,
-      async (res) => {
-        const n = normalizeLd(id, extractLdJson(await res.text()));
-        if (!hasAnyField(n)) throw new Error("no usable JSON-LD fields");
-        return n;
-      },
-      doFetch
-    );
   }
 
   // Provider failures arrive wrapped in AggregateError (one per proxy chain).
@@ -317,24 +238,33 @@
     if (typeof doFetch !== "function") {
       throw new Error("No fetch implementation available");
     }
-    const providers = [fetchFromSuggestion, fetchFromImdbPage];
     const errors = [];
-    for (const provider of providers) {
-      try {
-        return await provider(id, doFetch);
-      } catch (e) {
-        errors.push(e);
+
+    // 1) Direct, no proxy — the happy path (~86 ms measured).
+    try {
+      const res = await withTimeout(doFetch, SUGGESTION_URL(id));
+      if (res.ok) {
+        const n = normalizeSuggestion(id, await res.json());
+        if (hasAnyField(n)) return n;
       }
+    } catch (e) {
+      errors.push(e);
     }
-    throw pickError(errors) || new Error("All IMDb providers failed");
+
+    // 2) Fallback: the same endpoint through the rotating proxy chain.
+    try {
+      const urls = rotatedProxies().map((wrap) => wrap(SUGGESTION_URL(id)));
+      return await tryProxies(urls, id, doFetch);
+    } catch (e) {
+      errors.push(e);
+      throw pickError(errors) || new Error("All IMDb providers failed");
+    }
   }
 
   const api = {
     extractImdbIds,
     fetchTitle,
-    normalizeLd,
     normalizeSuggestion,
-    extractLdJson,
     LINK_RE,
     PROXIES,
   };

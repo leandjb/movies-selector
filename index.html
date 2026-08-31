@@ -1,32 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>The Shortlist — Vote for tonight's feature</title>
+  <title>The Shortlist — Vote for movies</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <meta
-    name="description"
-    content="Six great movies, one night. Peek the scores, watch a trailer, and vote — the winner takes the night."
-  >
+  <meta name="description" content="Vote for select the movie winner takes the night.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Sora:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet"
-  >
+    rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <script src="imdb.js" defer></script>
-  <script src="queue.js" defer></script>
-  <script src="board.js" defer></script>
-  <script src="gist.js" defer></script>
-  <script src="winner.js" defer></script>
-  <script src="topbar.js" defer></script>
-  <script src="toast.js" defer></script>
-  <script src="app.js" defer></script>
+  <script src="src/imdb.js" defer></script>
+  <script src="src/queue.js" defer></script>
+  <script src="src/board.js" defer></script>
+  <script src="src/gist.js" defer></script>
+  <script src="src/winner.js" defer></script>
+  <script src="src/topbar.js" defer></script>
+  <script src="src/toast.js" defer></script>
+  <script src="src/app.js" defer></script>
 </head>
+
 <body>
-<!--
+  <!--
   THESIS: A movie-night shortlist as a dark amber glass panel — nine films float on frosted glass over a deep warm-night gradient lit by ambient ember glow, votes are the only light source, and the leader's pane carries the accent; it refuses the dark streaming grid and every dated skin this page has worn before.
   OWN-WORLD: deep warm-tinted dark gradient ground with amber ambient blobs; frosted glass panels (translucent white fill, backdrop blur, hairline border, top-edge highlight); one amber accent for votes, the winner, and focus; Sora display over Archivo body.
   STORY: Visitors land on a dark glass board, see the shortlist, add films from a link or a gist, and vote — the navbar's missing-votes pill ticks down, the budget bar fills, and the winner comes when they call it.
@@ -43,7 +41,7 @@
           <span class="brand__mark" aria-hidden="true">★</span>
           <span class="brand__name">The Shortlist</span>
         </a>
-        <p class="site-head__tag">vote for tonight's feature</p>
+        <p class="site-head__tag"></p>
         <span class="chip chip--count" id="board-count-chip" aria-live="polite">0 / 9</span>
       </div>
       <div class="site-head__status">
@@ -61,19 +59,18 @@
   <main id="top">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero__panel glass">
-        <p class="hero__kicker">nine slots · one pick</p>
-        <h1 id="hero-title" class="hero__title">Tonight's shortlist</h1>
-        <p class="hero__slab">VOTE QUIETLY · THE WINNER COMES WHEN YOU CALL IT</p>
+        <h1 id="hero-title" class="hero__title">Tonight's Movie shortlist</h1>
         <p class="hero__lede">
-          Paste an IMDb link or import a gist of links, set your vote budget,
-          then cast. The winner stays hidden until you reveal the night's film.
+          Paste an IMDb links, set your votes in the movie panel, then The winner stays hidden until you reveal the
+          night's film.
         </p>
         <a class="hero__cta" href="#movie-grid">Build the shortlist</a>
       </div>
 
+
       <div class="hero__tools">
         <section class="ctl glass" aria-labelledby="ctl-budget-title">
-          <p class="ctl__kicker" id="ctl-budget-title">Vote budget</p>
+          <p class="ctl__kicker" id="ctl-budget-title">Number of persons</p>
           <div class="ctl__body">
             <div class="budget" role="group" aria-label="Set your vote budget">
               <span class="budget__label" id="budget-label">votes to give</span>
@@ -85,15 +82,8 @@
                 <span aria-hidden="true">+</span>
               </button>
             </div>
-            <div
-              class="budget__progress"
-              id="budget-progress"
-              role="progressbar"
-              aria-label="Votes given"
-              aria-valuemin="0"
-              aria-valuemax="10"
-              aria-valuenow="0"
-            >
+            <div class="budget__progress" id="budget-progress" role="progressbar" aria-label="Votes given"
+              aria-valuemin="0" aria-valuemax="10" aria-valuenow="0">
               <span class="budget__bar" id="budget-bar"></span>
             </div>
             <p class="budget__remaining" id="budget-remaining" aria-live="polite"></p>
@@ -101,17 +91,11 @@
         </section>
 
         <section class="ctl glass" aria-labelledby="ctl-add-title">
-          <p class="ctl__kicker" id="ctl-add-title">Add by IMDb link</p>
+          <p class="ctl__kicker" id="ctl-add-title">Import by IMDb link</p>
           <form class="adder__form" id="adder-form">
             <label class="adder__label" for="imdb-input">IMDb link</label>
-            <input
-              class="adder__input"
-              id="imdb-input"
-              type="text"
-              inputmode="url"
-              placeholder="Paste an IMDb link, e.g. https://www.imdb.com/title/tt0118881/"
-              autocomplete="off"
-            >
+            <input class="adder__input" id="imdb-input" type="text" inputmode="url"
+              placeholder="Paste an IMDb link, e.g. https://www.imdb.com/title/tt0118881/" autocomplete="off">
             <button class="adder__add" id="adder-add" type="submit">Add</button>
           </form>
         </section>
@@ -121,14 +105,8 @@
           <div class="ctl__body ctl__body--import">
             <div class="gist">
               <label class="adder__label" for="gist-input">Gist URL</label>
-              <input
-                class="adder__input gist__input"
-                id="gist-input"
-                type="url"
-                placeholder="gist.github.com/user/your-gist-id"
-                autocomplete="off"
-                spellcheck="false"
-              >
+              <input class="adder__input gist__input" id="gist-input" type="url"
+                placeholder="gist.github.com/user/your-gist-id" autocomplete="off" spellcheck="false">
               <button class="gist__btn" id="gist-import" type="button">Import gist</button>
             </div>
           </div>
@@ -136,10 +114,11 @@
       </div>
     </section>
 
+
     <section class="board" aria-labelledby="board-title">
       <div class="board__tools">
         <div class="board__headline">
-          <h2 id="board-title" class="board__title">The Shortlist</h2>
+          <h2 id="board-title" class="board__title">Shortlist</h2>
           <p class="board__note" id="board-note" aria-live="polite">
             Build tonight's shortlist — paste an IMDb link or import a file.
           </p>
@@ -155,13 +134,8 @@
 
   <div class="modal" id="clear-modal" hidden>
     <div class="modal__scrim" data-close></div>
-    <div
-      class="modal__dialog glass"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="clear-modal-title"
-      aria-describedby="clear-modal-desc"
-    >
+    <div class="modal__dialog glass" role="dialog" aria-modal="true" aria-labelledby="clear-modal-title"
+      aria-describedby="clear-modal-desc">
       <h2 class="modal__title" id="clear-modal-title">Erase everything?</h2>
       <p class="modal__desc" id="clear-modal-desc">
         This removes all <span id="clear-modal-count">0</span> movie cards and the
@@ -176,12 +150,7 @@
 
   <div class="modal winner-modal" id="winner-modal" hidden>
     <div class="modal__scrim" data-close></div>
-    <div
-      class="modal__dialog glass"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="winner-modal-title"
-    >
+    <div class="modal__dialog glass" role="dialog" aria-modal="true" aria-labelledby="winner-modal-title">
       <button class="modal__x" type="button" data-close aria-label="Close the results">
         <span aria-hidden="true">×</span>
       </button>
@@ -192,21 +161,18 @@
   </div>
 
   <footer class="site-foot">
+
     <div class="site-foot__inner glass">
       <p>
-        Details come from IMDb · votes live in your browser · no accounts, no
-        nonsense
-      </p>
-      <p class="site-foot__credit">
-        Developed with passion by
-        <a
-          href="https://github.com/leandjb"
-          target="_blank"
-          rel="noopener noreferrer"
-          >leandjb</a
-        >
+        Details come from IMDb · Votes in your browser · No accounts
       </p>
     </div>
+   
+    <hr>
+    <p class="site-foot__credit">Developed with passion by <a href="https://github.com/leandjb" target="_blank"
+        rel="noopener noreferrer"> @leandjb </a></p>
+
   </footer>
 </body>
+
 </html>

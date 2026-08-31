@@ -16,19 +16,19 @@ import { dirname, resolve } from "node:path";
 import { jest } from "@jest/globals";
 // The DOM suites eval app.js against globalThis, so every window.* module it
 // reaches for has to be attached here, in dependency order.
-import "../../imdb.js";
-import "../../queue.js";
-import "../../board.js";
-import "../../gist.js";
-import "../../winner.js";
-import "../../topbar.js";
-import "../../toast.js";
+import "../../src/imdb.js";
+import "../../src/queue.js";
+import "../../src/board.js";
+import "../../src/gist.js";
+import "../../src/winner.js";
+import "../../src/topbar.js";
+import "../../src/toast.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..", "..");
 
 const INDEX_HTML = readFileSync(resolve(ROOT, "index.html"), "utf8");
-const APP_SRC = readFileSync(resolve(ROOT, "app.js"), "utf8");
+const APP_SRC = readFileSync(resolve(ROOT, "src", "app.js"), "utf8");
 
 const BODY_MATCH = /<body[^>]*>([\s\S]*)<\/body>/i.exec(INDEX_HTML);
 const BODY = BODY_MATCH ? BODY_MATCH[1] : "";
@@ -120,23 +120,27 @@ export function createFetchRouter(routes = []) {
     const target = unwrapProxy(url);
     const settle = begin();
     callLog.push({ url, target, opts });
-    const route = routes.find((r) => r.test(target));
+    const route = routes.find((r) => r.test(url));
     const body = route
       ? typeof route.body === "function"
-        ? route.body(target)
+        ? route.body(target, url)
         : route.body
       : { error: "no route for " + target };
-    // `status` and `headers` may be functions of the target, so a route can
-    // answer 429-then-200 and exercise retry paths.
+    // `status` and `headers` may be functions of the target (and url), so a
+    // route can answer 429-then-200 and exercise retry paths.
     const deliver = () =>
       makeResponse(
         route
           ? typeof route.status === "function"
-            ? route.status(target)
+            ? route.status(target, url)
             : route.status
           : 502,
         body,
-        route ? route.headers : null
+        route
+          ? typeof route.headers === "function"
+            ? route.headers(target, url)
+            : route.headers
+          : null
       );
     if (route && route.defer) {
       let release;
@@ -231,7 +235,7 @@ export async function flushReal(ms = 3000) {
 
 export function suggestionSuccessRoute() {
   return {
-    test: (t) => t.includes("v3.sg.media-imdb.com/suggestion/"),
+    test: (u) => u.includes("v3.sg.media-imdb.com"),
     status: 200,
     body: (t) => {
       const m = /suggestion\/x\/([^.]+)\.json/.exec(t);
@@ -252,20 +256,6 @@ export function suggestionSuccessRoute() {
 
 export function statusRoute(substr, status, body) {
   return { test: (t) => t.includes(substr), status, body };
-}
-
-export function jsonLdRoute(id, data) {
-  const html =
-    `<!doctype html><html><body>` +
-    `<script type="application/ld+json">${JSON.stringify({
-      "@type": "Movie",
-      name: data.title,
-      datePublished: (data.year || 2020) + "-01-01",
-      aggregateRating: { ratingValue: data.rating },
-      image: data.poster || "https://img.example/p.jpg",
-    })}</script>` +
-    `</body></html>`;
-  return { test: (t) => t.includes("imdb.com/title/") && t.includes(id), status: 200, body: html };
 }
 
 export function gistRoute(id, content) {

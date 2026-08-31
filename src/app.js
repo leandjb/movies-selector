@@ -137,7 +137,6 @@
   const clearConfirm = document.getElementById("clear-confirm");
 
   const ORBIT_C = 2 * Math.PI * 15.5;
-  const scoreOrDash = (value) => (value == null ? "—" : value.toFixed(1));
 
   /* ------------------------------------------------------------------
    * Card rendering
@@ -172,7 +171,6 @@
         <div class="menu__meta">
           <h3 class="menu__title">${esc(titleText)}</h3>
           <div class="menu__badges">
-            <span class="badge badge--imdb">${scoreOrDash(movie.rating)}</span>
             <span class="badge badge--year">${esc(yearText)}</span>
             <a
               class="badge badge--link"
@@ -308,8 +306,6 @@
     if (yearBadge) {
       yearBadge.textContent = m.year != null ? String(m.year) : "—";
     }
-    const badge = li.querySelector(".badge--imdb");
-    if (badge) badge.textContent = scoreOrDash(m.rating);
     li.classList.remove("menu__card--loading");
   }
 

@@ -1,4 +1,4 @@
-import "./winner.js";
+import "../../src/winner.js";
 
 const { tallyResults } = globalThis.Winner;
 

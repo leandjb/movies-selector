@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Lets visitors build the movie board themselves from IMDb title links — pasting one link for an instant card or importing a TXT file of links in bulk — under a hard cap of 9 cards, with a confirmed clear-all reset.
+Lets visitors build the movie board themselves from IMDb title links — pasting one link for an instant card or importing a gist of links in bulk — under a hard cap of 9 cards, with a confirmed clear-all reset.
 
 ## Requirements
 
@@ -21,33 +21,30 @@ The page SHALL provide an input where the visitor pastes an IMDb title link and 
 - **WHEN** the visitor submits an IMDb title link for a movie already on the board
 - **THEN** no new card is created and a duplicate message is shown
 
-### Requirement: TXT file import adds movies in bulk
-The page SHALL provide a file control that accepts a .txt file. The file SHALL be read locally in the browser (no upload). Each line SHALL be scanned for IMDb title links; every valid link found for a movie not already on the board SHALL add a card, in file order, subject to the board limit.
-
-#### Scenario: File of valid links imports cards
-- **WHEN** the visitor selects a .txt file where lines contain valid IMDb title links
-- **THEN** one card per unique, not-already-present movie is created in file order
-
-#### Scenario: Invalid lines are skipped without aborting the import
-- **WHEN** a .txt file contains lines with no valid IMDb title link
-- **THEN** those lines add no cards and the rest of the file still imports
-
 ### Requirement: Import reports a summary
-After a paste submission or file import, the page SHALL report what happened: how many movies were added, how many were duplicates, how many lines or submissions were invalid, and how many were skipped because the board was full.
+After a gist import or a paste submission, the page SHALL report what happened as a transient toast notification: how many movies were added, how many were duplicates, how many lines or submissions were invalid, and how many were skipped because the board was full. Error feedback (invalid link, board full, gist failures) SHALL also surface as a toast. Toasts SHALL be transient (auto-dismiss) and MUST NOT rely on the removed inline status bar.
 
 #### Scenario: Mixed import result is reported
-- **WHEN** a .txt import finishes with some movies added, some duplicates, some invalid lines, and some skipped for the board limit
-- **THEN** a summary states the count of each outcome
+- **WHEN** a gist import finishes with some movies added, some duplicates, some invalid lines, and some skipped for the board limit
+- **THEN** a toast states the count of each outcome
+
+#### Scenario: Error feedback surfaces as a toast
+- **WHEN** the visitor submits text with no valid IMDb link or a gist import fails
+- **THEN** an error toast appears and no inline status region is required
+
+#### Scenario: Toasts auto-dismiss
+- **WHEN** a toast is shown
+- **THEN** it disappears on its own after a bounded time without requiring interaction
 
 ### Requirement: Board holds at most 9 movies
-The board SHALL contain at most 9 movie cards at any time. A paste submission that would exceed the limit MUST be rejected with a message. A file import SHALL fill only the remaining free slots and report the skipped count. The page SHALL show a live count of cards against the limit.
+The board SHALL contain at most 9 movie cards at any time. A paste submission that would exceed the limit MUST be rejected with a message. A gist import SHALL fill only the remaining free slots and report the skipped count. The page SHALL show a live count of cards against the limit.
 
 #### Scenario: Paste rejected when the board is full
 - **WHEN** the board holds 9 movies and the visitor submits a valid new IMDb link
 - **THEN** no card is created and a board-full message is shown
 
 #### Scenario: Import stops at the limit
-- **WHEN** a .txt file contains more unique new movies than free slots remain
+- **WHEN** a gist import contains more unique new movies than free slots remain
 - **THEN** cards are created only up to the limit and the summary reports the number skipped
 
 #### Scenario: Counter reflects the board size
@@ -55,11 +52,11 @@ The board SHALL contain at most 9 movie cards at any time. A paste submission th
 - **THEN** the displayed count shows the current number of movies out of 9
 
 ### Requirement: Cards hydrate with fetched IMDb data
-Each card SHALL display the movie's portrait, title, release year, and IMDb rating fetched from the movie's IMDb data. While details are loading the card SHALL show a loading placeholder. If details cannot be fetched, the card MUST remain with placeholder dashes and MUST NOT display a fabricated title, year, or rating.
+Each card SHALL display the movie's portrait, title, and release year fetched from the movie's IMDb data. While details are loading the card SHALL show a loading placeholder. If details cannot be fetched, the card MUST remain with placeholder dashes and MUST NOT display a fabricated title or year.
 
 #### Scenario: Card fills in after details load
 - **WHEN** details for an added movie finish loading successfully
-- **THEN** the card shows the movie's portrait, title, release year, and IMDb rating
+- **THEN** the card shows the movie's portrait, title, and release year
 
 #### Scenario: Card shows placeholders while loading
 - **WHEN** a card has been created but its details have not yet loaded
@@ -69,24 +66,20 @@ Each card SHALL display the movie's portrait, title, release year, and IMDb rati
 - **WHEN** details for a card cannot be fetched
 - **THEN** the card remains on the board with placeholder dashes for the missing values
 
-### Requirement: Metadata fetching is throttled and retried
-The page SHALL fetch movie details through a queue that keeps at most one details request in flight at a time and SHALL wait a short randomized delay between fetching different movies. When an individual request fails with a rate-limit response, a timeout response, a server error, or a network error, the page SHALL retry that request with a bounded, increasing delay before falling back to the next data source. Every movie awaiting details SHALL be fetched through this same queue, including movies whose details are retried when the page loads.
+### Requirement: Cards show a year badge and an IMDb link
+Each hydrated movie card SHALL display a badge row containing the release year and an "IMDb" link that opens the movie's IMDb title page in a new tab. The link MUST use `target="_blank"` with `rel="noopener noreferrer"`. Cards MUST NOT display an IMDb rating: none is fetched, and no rating placeholder is rendered.
 
-#### Scenario: Bulk import does not burst
-- **WHEN** a file import adds several movies at once
-- **THEN** their details are fetched one movie at a time with a delay between movies, not all simultaneously
+#### Scenario: Hydrated card shows the full badge row
+- **WHEN** a card's details finish loading successfully
+- **THEN** the badge row shows the year and a working IMDb link for that movie, and no rating badge
 
-#### Scenario: Rate-limited or failed attempt is retried
-- **WHEN** a details request fails with a rate-limit, timeout, server-error, or network failure
-- **THEN** the page waits a bounded, increasing delay and retries before falling back to the next data source
+#### Scenario: IMDb link opens safely in a new tab
+- **WHEN** the visitor activates a card's IMDb link
+- **THEN** the movie's IMDb title page opens in a new tab without granting the page access to the opener context
 
-#### Scenario: Bounded retries end in placeholders
-- **WHEN** every attempt for a movie fails even after retries
-- **THEN** the card remains with placeholder dashes for the missing values and the queue moves on to the next movie
-
-#### Scenario: Reload retry uses the queue
-- **WHEN** the page loads with movies whose details never loaded
-- **THEN** their retries are also fetched one at a time through the same queue
+#### Scenario: Badge row renders even when details fail
+- **WHEN** a card's details cannot be fetched
+- **THEN** the year shows a placeholder while the IMDb link still renders from the movie's ID
 
 ### Requirement: Remove a single movie from the board
 Each movie card SHALL provide a remove control (an "X" button) that, when activated, removes only that movie from the board immediately, without a confirmation dialog. Removing a movie SHALL also remove any votes allocated to that movie. The removal SHALL persist across page reloads. A movie that has been removed MAY be added again by submitting its link.
@@ -138,7 +131,7 @@ The page SHALL provide a "Clear all" control that opens a confirmation dialog be
 - **THEN** the "Clear all" control is disabled
 
 ### Requirement: Empty board state
-When the board has no movies, the page SHALL show an inviting empty state that directs the visitor to paste a link or import a file. The show-winner control SHALL be disabled while the board is empty.
+When the board has no movies, the page SHALL show an inviting empty state that directs the visitor to paste a link or import a gist. The show-winner control SHALL be disabled while the board is empty.
 
 #### Scenario: First visit shows an empty board
 - **WHEN** the page loads with no persisted movies
@@ -171,20 +164,28 @@ The page SHALL provide a gist import field that accepts a GitHub gist URL or a b
 - **WHEN** the gist request fails because of a network error, a missing gist, or GitHub rate limiting
 - **THEN** an error message is shown and the board is unchanged
 
-### Requirement: Board tools are grouped into dedicated sections
-The page SHALL present the board controls in four visually distinct sections: a vote-budget section, an add-by-IMDb-link section, an import section holding both the TXT file control and the gist import, and a status section holding the feedback message, the movie count against the limit, and the Clear all control.
+### Requirement: Board controls live in the navbar and hero control column
+The page SHALL present its board controls in a glass navbar and a hero control column instead of a mid-page toolbar: the navbar SHALL hold the brand, a live board-count chip (current movies against the limit), a votes-missing pill, and the show-winner control; the hero's right-hand column SHALL stack the vote-budget control (stepper with a progress bar of votes given and votes left), the add-by-IMDb-link form, and the gist import form. No mid-page status bar SHALL remain; the clear-all control SHALL sit as a small quiet control at the edge of the board section.
 
-#### Scenario: Four sections render
+#### Scenario: Navbar holds brand, count, pill, and reveal
 - **WHEN** the page loads
-- **THEN** the vote budget, add-by-link, import, and status controls appear in four distinct sections
+- **THEN** the navbar shows the brand, the board-count chip, the votes-missing pill, and the show-winner button
 
-#### Scenario: Import section holds both import paths
-- **WHEN** the visitor wants to import movies from a file or a gist
-- **THEN** both the TXT file control and the gist field are found in the same import section
+#### Scenario: Hero column stacks the three controls
+- **WHEN** the page loads
+- **THEN** the vote budget, add-by-link form, and gist import appear stacked in the hero's control column
+
+#### Scenario: Budget progress is visible
+- **WHEN** votes are allocated or returned
+- **THEN** the budget control's progress bar and remaining-votes label update to reflect votes given and votes left
+
+#### Scenario: Clear all sits at the board edge
+- **WHEN** the board has at least one movie
+- **THEN** a small clear-all control is reachable at the board section's edge, and it keeps its confirmation-dialog behavior
 
 ### Requirement: Broken posters fall back to a placeholder
 If a movie's poster image fails to load, the card SHALL show a placeholder poster in place of the broken image while the rest of the fetched details remain displayed.
 
 #### Scenario: Poster URL fails to load
 - **WHEN** a card's poster image cannot be loaded
-- **THEN** the card shows a placeholder poster and keeps its title, year, and rating
+- **THEN** the card shows a placeholder poster and keeps its title and year

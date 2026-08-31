@@ -1,7 +1,7 @@
-import "./imdb.js";
-import "./board.js";
-import "./gist.js";
-import "./winner.js";
+import "../../src/imdb.js";
+import "../../src/board.js";
+import "../../src/gist.js";
+import "../../src/winner.js";
 
 const { createBoard } = globalThis.Board;
 const { extractImdbIds, fetchTitle } = globalThis.Imdb;
@@ -48,40 +48,21 @@ function unwrapProxy(url) {
   return url;
 }
 
-const isPageTarget = (t) => t.includes("imdb.com/title");
 const isSuggestionTarget = (t) => t.includes("media-imdb.com");
 
 const titleOf = (m) =>
   m.primaryTitle || (m.titleText && m.titleText.text) || null;
 const yearOf = (m) =>
   m.startYear || (m.releaseDate && m.releaseDate.year) || null;
-const ratingOf = (m) => {
-  if (m.ratings && m.ratings.aggregateRating != null)
-    return m.ratings.aggregateRating;
-  if (m.rating && typeof m.rating === "object")
-    return m.rating.aggregateRating;
-  return m.rating != null ? m.rating : null;
-};
 const posterOf = (m) =>
   (m.primaryImage && m.primaryImage.url) || m.image || null;
-
-const ldHtmlFor = (id, m) =>
-  '<html><head><script type="application/ld+json">' +
-  JSON.stringify({
-    "@type": "Movie",
-    name: titleOf(m),
-    image: posterOf(m),
-    datePublished: String(yearOf(m) || 2000) + "-01-01",
-    aggregateRating: { ratingValue: ratingOf(m) },
-  }) +
-  "<\/script></head></html>";
 
 const suggestionFor = (id, m) => ({
   d: [{ id, l: titleOf(m), y: yearOf(m), i: { imageUrl: posterOf(m) } }],
 });
 
-// Routed fake: answers whichever provider the chain tries (page via proxy,
-// suggestion via proxy, or the legacy direct API).
+// Routed fake: answers the suggestion endpoint (the only live source now). Direct
+// and proxy-wrapped requests unwrap to the same suggestion target.
 const fakeFetch = (map) => async (url) => {
   const target = unwrapProxy(url);
   const idMatch = /(tt\d{7,10})/.exec(target);
@@ -89,32 +70,19 @@ const fakeFetch = (map) => async (url) => {
   if (!data) {
     return { ok: false, status: 404, text: async () => "", json: async () => ({}) };
   }
-  if (target.includes("api.imdbapi.dev")) {
-    return { ok: true, json: async () => data };
-  }
-  if (isPageTarget(target)) {
-    return { ok: true, text: async () => ldHtmlFor(idMatch[1], data), json: async () => ({}) };
-  }
   if (isSuggestionTarget(target)) {
     return { ok: true, json: async () => suggestionFor(idMatch[1], data) };
   }
   return { ok: false, status: 404, text: async () => "", json: async () => ({}) };
 };
 
-// Like fakeFetch, but the suggestion endpoint is down (403) so the chain is
-// forced to fall back to the IMDb page JSON-LD (which carries the rating).
+// Like fakeFetch, but the suggestion endpoint is down (403) so the source fails.
 const fakeFetchSuggestionDown = (map) => async (url) => {
   const target = unwrapProxy(url);
   const idMatch = /(tt\d{7,10})/.exec(target);
   const data = idMatch ? map[idMatch[1]] : null;
   if (!data) {
     return { ok: false, status: 404, text: async () => "", json: async () => ({}) };
-  }
-  if (target.includes("api.imdbapi.dev")) {
-    return { ok: true, json: async () => data };
-  }
-  if (isPageTarget(target)) {
-    return { ok: true, text: async () => ldHtmlFor(idMatch[1], data), json: async () => ({}) };
   }
   if (isSuggestionTarget(target)) {
     return { ok: false, status: 403, text: async () => "", json: async () => ({}) };
@@ -155,7 +123,7 @@ describe("integration: paste -> board -> fetch -> hydrate -> persist", () => {
     expect(restored.list()[0].title).toBe("Her");
   });
 
-  it("fills the rating from the page JSON-LD when the suggestion is unavailable", async () => {
+  it("degrades to an error state (no rating) when the suggestion source is unavailable", async () => {
     const store = makeStorage();
     const board = createBoard(store, { extractFn: extractImdbIds });
     const fetchImpl = fakeFetchSuggestionDown({
@@ -171,9 +139,11 @@ describe("integration: paste -> board -> fetch -> hydrate -> persist", () => {
       "https://www.imdb.com/title/tt0118881/",
       fetchImpl
     );
-    expect(board.list()[0].title).toBe("Her");
-    expect(board.list()[0].rating).toBe(8.0);
-    expect(board.list()[0].status).toBe("ready");
+    // Her can't have been hydrated — the page JSON-LD provider is gone, and the
+    // suggestion source is down — so the card lands in the error state.
+    expect(board.list()[0].title).toBeNull();
+    expect(board.list()[0].status).toBe("error");
+    expect(board.list()[0].rating).toBeNull();
   });
 
   it("enforces the 9-cap and reports skipped across a file import", async () => {

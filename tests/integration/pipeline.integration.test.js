@@ -1,9 +1,9 @@
 /** @jest-environment jsdom */
 import { jest } from "@jest/globals";
-import "./imdb.js";
-import "./board.js";
-import "./gist.js";
-import "./winner.js";
+import "../../src/imdb.js";
+import "../../src/board.js";
+import "../../src/gist.js";
+import "../../src/winner.js";
 import {
   loadApp,
   installFetch,
@@ -11,10 +11,18 @@ import {
   flushHydration,
   createFetchRouter,
   suggestionSuccessRoute,
-  jsonLdRoute,
   statusRoute,
   gistRoute,
-} from "./tests/helpers/app-harness.js";
+} from "../helpers/app-harness.js";
+
+const SUGGESTION_DOMAIN = "v3.sg.media-imdb.com";
+const SUGGESTION_HOST = "v3.sg.media-imdb.com/suggestion/";
+const PROXY_HOSTS = ["allorigins.win", "codetabs.com", "cors.workers.dev"];
+const isDirectSuggestion = (u) =>
+  u.includes(SUGGESTION_DOMAIN) && !PROXY_HOSTS.some((h) => u.includes(h));
+const isProxySuggestion = (u) =>
+  PROXY_HOSTS.some((h) => u.includes(h)) && u.includes(SUGGESTION_DOMAIN);
+const isPage = (u) => u.includes("imdb.com/title/");
 
 let router;
 
@@ -31,20 +39,16 @@ afterEach(() => {
 
 function suggestionCalls() {
   return router.callLog
-    .filter((c) => c.target.includes("v3.sg.media-imdb.com/suggestion/"))
+    .filter((c) => c.target.includes(SUGGESTION_HOST))
     .map((c) => c.target);
 }
 function pageCalls() {
-  return router.callLog
-    .filter((c) => c.target.includes("imdb.com/title/"))
-    .map((c) => c.target);
+  return router.callLog.filter((c) => isPage(c.target)).map((c) => c.target);
 }
-
-// Which proxy (index in Imdb.PROXIES) wrapped each suggestion request.
 function proxyIndexes() {
   const { PROXIES } = globalThis.Imdb;
   return router.callLog
-    .filter((c) => c.target.includes("v3.sg.media-imdb.com/suggestion/"))
+    .filter((c) => isProxySuggestion(c.url))
     .map((c) => {
       for (let i = 0; i < PROXIES.length; i += 1) {
         if (PROXIES[i](c.target) === c.url) return i;
@@ -58,13 +62,12 @@ function toastTexts() {
     (n) => n.textContent
   );
 }
-
 function lastToast() {
   return toastTexts()[toastTexts().length - 1] || null;
 }
 
 describe("Add-by-link hydration through the DOM", () => {
-  test("suggestion API is tried first and hydrates title/year/poster; rating is —", async () => {
+  test("the direct suggestion request hydrates title/year/poster and shows no rating badge", async () => {
     document.getElementById("imdb-input").value =
       "https://www.imdb.com/title/tt0111161/";
     document
@@ -75,16 +78,16 @@ describe("Add-by-link hydration through the DOM", () => {
     expect(card.querySelector(".menu__title").textContent).toContain(
       "Hydrated tt0111161"
     );
-    expect(card.querySelector(".badge--imdb").textContent.trim()).toBe("—");
-    // only the suggestion endpoint was hit (one proxy, first try)
-    expect(suggestionCalls().length).toBe(1);
+    expect(card.querySelector(".badge--imdb")).toBeNull();
+    // only the direct suggestion endpoint was hit (one request, no proxy)
+    expect(suggestionCalls().filter(isDirectSuggestion).length).toBe(1);
   });
 
-  test("suggestion failure falls back to JSON-LD for the rating", async () => {
+  test("direct failure falls back to the proxy chain (same endpoint), no page provider", async () => {
     router = installFetch(
       createFetchRouter([
-        statusRoute("v3.sg.media-imdb.com/suggestion/", 404),
-        jsonLdRoute("tt0111161", { title: "Real Title", year: 2019, rating: 8.4 }),
+        { test: isDirectSuggestion, status: 404, body: {} },
+        suggestionSuccessRoute(),
       ])
     );
     document.getElementById("imdb-input").value =
@@ -94,13 +97,14 @@ describe("Add-by-link hydration through the DOM", () => {
       .dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
     await flushHydration();
     const card = document.querySelector('.menu__card[data-id="tt0111161"]');
-    expect(card.querySelector(".menu__title").textContent).toBe("Real Title");
-    expect(card.querySelector(".badge--imdb").textContent.trim()).toBe("8.4");
-    // suggestion failed (no usable data) -> page JSON-LD tried
-    expect(pageCalls().length).toBeGreaterThanOrEqual(1);
+    expect(card.querySelector(".menu__title").textContent).toBe("Hydrated tt0111161");
+    // direct failed, so the proxy chain was used
+    expect(router.callLog.some((c) => isProxySuggestion(c.url))).toBe(true);
+    // no dead title-page provider was ever requested
+    expect(pageCalls().length).toBe(0);
   });
 
-  test("every provider fails -> card lands in the error state", async () => {
+  test("every source fails -> card lands in the error state, no page provider", async () => {
     router = installFetch(createFetchRouter([statusRoute("imdb.com", 502)]));
     document.getElementById("imdb-input").value =
       "https://www.imdb.com/title/tt0111161/";
@@ -111,9 +115,9 @@ describe("Add-by-link hydration through the DOM", () => {
     const card = document.querySelector('.menu__card[data-id="tt0111161"]');
     // error card keeps its title placeholder ("—") and never fabricates data
     expect(card.querySelector(".menu__title").textContent).toBe("Unavailable");
-    // the provider chain was walked: suggestion, then the title page
+    // the provider chain was walked: direct, then the proxies
     expect(suggestionCalls().length).toBeGreaterThan(0);
-    expect(pageCalls().length).toBeGreaterThan(0);
+    expect(pageCalls().length).toBe(0);
   });
 });
 
@@ -239,8 +243,13 @@ describe("Bulk import: bounded concurrency, rotation, cache", () => {
   });
 
   test("consecutive hydration requests rotate across proxies", async () => {
+    const { PROXIES } = globalThis.Imdb;
     router = installFetch(
-      createFetchRouter([suggestionSuccessRoute(), gistWith(IDS)])
+      createFetchRouter([
+        { test: isDirectSuggestion, status: 403, body: {} },
+        { ...suggestionSuccessRoute(), test: isProxySuggestion },
+        gistWith(IDS),
+      ])
     );
     document.getElementById("gist-input").value =
       "https://gist.github.com/u/abc123def4567890abc123def4567890";
@@ -249,7 +258,7 @@ describe("Bulk import: bounded concurrency, rotation, cache", () => {
 
     const used = proxyIndexes();
     expect(used.length).toBeGreaterThanOrEqual(IDS.length);
-    expect(new Set(used).size).toBe(globalThis.Imdb.PROXIES.length);
+    expect(new Set(used).size).toBe(PROXIES.length);
   });
 
   test("a re-added movie is served from cache with no new request", async () => {
@@ -298,8 +307,8 @@ describe("Bulk import: bounded concurrency, rotation, cache", () => {
 
     // it retried rather than giving up...
     expect(limited.callLog.length).toBeGreaterThanOrEqual(3);
-    // ...but stayed inside the documented bound: 2 providers x 3 proxies x
-    // (1 + 2 retries), plus the gist fetch. Not a retry storm.
+    // ...but stayed inside the documented bound: 1 direct + 3 proxies x up to 2
+    // attempts, plus the gist fetch. Not a retry storm.
     expect(limited.callLog.length).toBeLessThanOrEqual(
       globalThis.Imdb.PROXIES.length * 3 * 2 + 1
     );
