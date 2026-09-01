@@ -1139,6 +1139,90 @@ body.has-voted .menu__card {
   cursor: progress;
 }
 
+/* Paste control */
+.paste-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease),
+    background 0.2s var(--ease);
+}
+
+.paste-btn:hover {
+  color: var(--accent);
+  border-color: rgba(245, 165, 36, 0.5);
+  background: rgba(245, 165, 36, 0.08);
+}
+
+.paste-btn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Gist picklist */
+.gist-picklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.gist-picklist:empty {
+  display: none;
+}
+
+.gist-picklist__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease),
+    background 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.gist-picklist__item:hover {
+  border-color: rgba(245, 165, 36, 0.5);
+  background: rgba(245, 165, 36, 0.08);
+}
+
+.gist-picklist__item:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+.gist-picklist__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gist-picklist__date {
+  flex: none;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
 .adder__file {
   display: inline-flex;
   align-items: center;

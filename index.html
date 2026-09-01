@@ -17,6 +17,7 @@
   <script src="src/queue.js" defer></script>
   <script src="src/board.js" defer></script>
   <script src="src/gist.js" defer></script>
+  <script src="src/gists-list.js" defer></script>
   <script src="src/winner.js" defer></script>
   <script src="src/topbar.js" defer></script>
   <script src="src/toast.js" defer></script>
@@ -96,6 +97,7 @@
             <label class="adder__label" for="imdb-input">IMDb link</label>
             <input class="adder__input" id="imdb-input" type="text" inputmode="url"
               placeholder="Paste an IMDb link, e.g. https://www.imdb.com/title/tt0118881/" autocomplete="off">
+            <button class="paste-btn" id="imdb-paste" type="button" aria-label="Paste from clipboard">📋</button>
             <button class="adder__add" id="adder-add" type="submit">Add</button>
           </form>
         </section>
@@ -104,11 +106,13 @@
           <p class="ctl__kicker" id="ctl-import-title">Import from GitHub gist</p>
           <div class="ctl__body ctl__body--import">
             <div class="gist">
-              <label class="adder__label" for="gist-input">Gist URL</label>
-              <input class="adder__input gist__input" id="gist-input" type="url"
-                placeholder="gist.github.com/user/your-gist-id" autocomplete="off" spellcheck="false">
+              <label class="adder__label" for="gist-input">Gist URL, ID, or username</label>
+              <input class="adder__input gist__input" id="gist-input" type="text"
+                placeholder="gist URL, bare ID, or GitHub username" autocomplete="off" spellcheck="false">
+              <button class="paste-btn" id="gist-paste" type="button" aria-label="Paste from clipboard">📋</button>
               <button class="gist__btn" id="gist-import" type="button">Import gist</button>
             </div>
+            <div class="gist-picklist" id="gist-picklist" role="group" aria-label="Gist list"></div>
           </div>
         </section>
       </div>

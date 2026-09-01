@@ -142,7 +142,7 @@ describe("Gist import through the DOM", () => {
   });
 
   test.each([
-    ["bad-ref", "https://example.com/not-a-gist", "That doesn't look like a gist URL or ID.", undefined],
+    ["bad-ref", "https://example.com/not-a-gist", "That doesn't look like a gist URL, ID, or username.", undefined],
     ["not-found", "https://gist.github.com/u/abc123def4567890abc123def4567890", "That gist doesn't exist (or is private).", 404],
     ["rate-limited", "https://gist.github.com/u/abc123def4567890abc123def4567890", "GitHub rate limit reached — try again in a few minutes.", 403],
     ["no-text-file", "https://gist.github.com/u/abc123def4567890abc123def4567890", "That gist has no .txt file to import.", "notext"],

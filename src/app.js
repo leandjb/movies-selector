@@ -411,18 +411,92 @@
     "no-text-file": "That gist has no .txt file to import.",
   };
 
-  async function handleGistImport() {
-    const ref = gistInput.value.trim();
-    if (!ref) {
-      showFeedback("Paste a gist URL or ID first.", true);
-      gistInput.focus();
-      return;
+  const GIST_LIST_ERRORS = {
+    "bad-user": "That doesn't look like a valid GitHub username.",
+    network: "Could not reach GitHub — check the connection and try again.",
+    "rate-limited": "GitHub rate limit reached — try again in a few minutes.",
+    "no-importable-gist":
+      "That user has no gist with a .txt file to import.",
+  };
+
+  const GIST_URL_RE = /gist\.github(?:usercontent)?\.com\/(?:[^/\s]+\/)?([0-9a-f]{32})(?:[/?#]|$)/i;
+  const GIST_BARE_ID_RE = /^[0-9a-f]{32}$/i;
+  const GIST_USERNAME_RE = /^[a-zA-Z0-9-]{1,39}$/;
+
+  function classifyGistRef(text) {
+    const s = String(text || "").trim();
+    if (!s) return "empty";
+    if (GIST_URL_RE.test(s)) return "url";
+    if (GIST_BARE_ID_RE.test(s)) return "id";
+    if (GIST_USERNAME_RE.test(s)) return "username";
+    return "invalid";
+  }
+
+  /* ------------------------------------------------------------------
+   * Gist username persistence
+   * ------------------------------------------------------------------ */
+
+  const GIST_USER_KEY = "gistUser.v1";
+
+  function loadGistUser() {
+    try {
+      return window.localStorage.getItem(GIST_USER_KEY) || "";
+    } catch {
+      return "";
     }
+  }
+
+  function saveGistUser(username) {
+    try {
+      if (username) {
+        window.localStorage.setItem(GIST_USER_KEY, username);
+      } else {
+        window.localStorage.removeItem(GIST_USER_KEY);
+      }
+    } catch {
+      /* storage unavailable */
+    }
+  }
+
+  /* ------------------------------------------------------------------
+   * Gist picklist
+   * ------------------------------------------------------------------ */
+
+  const gistPicklist = document.getElementById("gist-picklist");
+
+  function clearPicklist() {
+    if (gistPicklist) gistPicklist.innerHTML = "";
+  }
+
+  function renderPicklist(gists) {
+    if (!gistPicklist) return;
+    gistPicklist.innerHTML = "";
+    for (const g of gists) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "gist-picklist__item";
+      btn.dataset.gistId = g.id;
+      const dateStr = g.date
+        ? new Date(g.date).toLocaleDateString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })
+        : "";
+      btn.innerHTML = `<span class="gist-picklist__title">${esc(g.title)}</span>${dateStr ? `<span class="gist-picklist__date">${esc(dateStr)}</span>` : ""}`;
+      btn.addEventListener("click", () => handlePicklistSelect(g.id));
+      gistPicklist.appendChild(btn);
+    }
+    // Focus the first item for D-pad navigation
+    const first = gistPicklist.querySelector(".gist-picklist__item");
+    if (first) first.focus();
+  }
+
+  async function handlePicklistSelect(gistId) {
+    clearPicklist();
     gistImportBtn.disabled = true;
     try {
-      // A failed fetch throws before any board mutation, so failures
-      // always leave the board untouched.
-      const { name, content } = await window.Gist.fetchGistText(ref);
+      const { name, content } = await window.Gist.fetchGistText(gistId);
       const summary = await handleAdd(content);
       showFeedback(`Imported ${name}: ${summaryText(summary)}`, false);
       gistInput.value = "";
@@ -437,13 +511,133 @@
     }
   }
 
+  async function handleGistImport() {
+    const ref = gistInput.value.trim();
+    if (!ref) {
+      showFeedback("Paste a gist URL or ID first.", true);
+      gistInput.focus();
+      return;
+    }
+
+    const kind = classifyGistRef(ref);
+
+    if (kind === "empty" || kind === "invalid") {
+      showFeedback("That doesn't look like a gist URL, ID, or username.", true);
+      gistInput.focus();
+      return;
+    }
+
+    if (kind === "url" || kind === "id") {
+      gistImportBtn.disabled = true;
+      try {
+        const { name, content } = await window.Gist.fetchGistText(ref);
+        const summary = await handleAdd(content);
+        showFeedback(`Imported ${name}: ${summaryText(summary)}`, false);
+        gistInput.value = "";
+      } catch (err) {
+        showFeedback(
+          GIST_ERRORS[(err && err.code) || ""] ||
+            "Could not import that gist.",
+          true
+        );
+      } finally {
+        gistImportBtn.disabled = false;
+      }
+      return;
+    }
+
+    // Username discovery
+    gistImportBtn.disabled = true;
+    clearPicklist();
+    try {
+      const gists = await window.GistsList.listUserGists(ref);
+      saveGistUser(ref);
+      renderPicklist(gists);
+    } catch (err) {
+      showFeedback(
+        GIST_LIST_ERRORS[(err && err.code) || ""] ||
+          "Could not fetch gists for that user.",
+        true
+      );
+    } finally {
+      gistImportBtn.disabled = false;
+    }
+  }
+
   gistImportBtn.addEventListener("click", handleGistImport);
   gistInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
       handleGistImport();
     }
+    if (e.key === "Escape" && gistPicklist && gistPicklist.children.length > 0) {
+      clearPicklist();
+    }
   });
+
+  // Prefill remembered username on boot
+  const savedUser = loadGistUser();
+  if (savedUser && !gistInput.value) {
+    gistInput.value = savedUser;
+    gistInput.placeholder = savedUser
+      ? `Username: ${savedUser} — or paste a gist URL`
+      : gistInput.placeholder;
+  }
+
+  /* ------------------------------------------------------------------
+   * Paste controls (tiered clipboard read)
+   * ------------------------------------------------------------------ */
+
+  function tryExecPaste(input) {
+    try {
+      input.focus();
+      document.execCommand("paste");
+      return input.value.trim().length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  async function handlePaste(targetInput) {
+    // Tier 1: async clipboard API in secure context
+    if (
+      typeof navigator !== "undefined" &&
+      navigator.clipboard &&
+      typeof navigator.clipboard.readText === "function" &&
+      typeof isSecureContext !== "undefined" &&
+      isSecureContext
+    ) {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim()) {
+          targetInput.value = text.trim();
+          return;
+        }
+      } catch {
+        // Permission denied or other error — fall through
+      }
+    }
+
+    // Tier 2: legacy execCommand paste (legacy TV WebKit builds)
+    if (tryExecPaste(targetInput)) return;
+
+    // Tier 3: guidance toast + focus
+    showFeedback(
+      "Use your remote's keyboard or on-screen keyboard to type the URL.",
+      true
+    );
+    targetInput.focus();
+  }
+
+  const imdbPasteBtn = document.getElementById("imdb-paste");
+  const gistPasteBtn = document.getElementById("gist-paste");
+
+  if (imdbPasteBtn) {
+    imdbPasteBtn.addEventListener("click", () => handlePaste(adderInput));
+  }
+  if (gistPasteBtn) {
+    gistPasteBtn.addEventListener("click", () => handlePaste(gistInput));
+  }
 
   /* ------------------------------------------------------------------
    * Voting
