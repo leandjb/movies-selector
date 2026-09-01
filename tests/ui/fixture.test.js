@@ -34,6 +34,7 @@ test("the old status bar, board head, and below-grid reveal are gone", () => {
   expect(document.querySelector(".reveal")).toBeNull();
   expect(document.getElementById("adder-feedback")).toBeNull();
   expect(document.getElementById("txt-input")).toBeNull();
+  expect(document.querySelectorAll(".paste-btn").length).toBe(0);
 });
 
 test("clear all sits at the edge of the board section", () => {

@@ -7,20 +7,21 @@ colors:
   ground-wash: "rgba(28, 20, 12, 0.95)"
   glow-blob-ember: "rgba(217, 119, 6, 0.32)"
   glow-blob-amber: "rgba(245, 165, 36, 0.16)"
-  glass-fill: "rgba(245, 165, 36, 0.05)"
-  glass-fill-strong: "rgba(245, 165, 36, 0.08)"
+  glass-fill: "rgba(245, 165, 36, 0.08)"
+  glass-fill-strong: "rgba(245, 165, 36, 0.12)"
   glass-border: "rgba(255, 200, 87, 0.16)"
-  glass-hi: "rgba(255, 200, 87, 0.12)"
+  glass-hi: "rgba(255, 200, 87, 0.06)"
   glass-line: "rgba(245, 165, 36, 0.1)"
   glass-chip: "rgba(255, 255, 255, 0.07)"
   glass-track: "rgba(255, 255, 255, 0.16)"
   glass-border-hover: "rgba(255, 255, 255, 0.24)"
   glass-edge: "rgba(255, 255, 255, 0.35)"
   glass-fallback: "rgba(26, 18, 10, 0.94)"
+  scrim: "rgba(7, 9, 13, 0.72)"
   chip-bg: "rgba(20, 14, 8, 0.55)"
   poster-wash: "rgba(20, 14, 8, 0.6)"
   text: "#f6f1ea"
-  text-muted: "#b0a698"
+  text-muted: "#c9beb0"
   accent: "#f5a524"
   accent-bright: "#ffc857"
   accent-deep: "#d97706"
@@ -73,14 +74,12 @@ typography:
     step-220: "2.2rem"
     step-350: "3.5rem"
   rounded:
+    micro: "3px"
     xs: "4px"
-    sm: "10px"
-    md: "12px"
-    lg: "14px"
-    xl: "16px"
-    xxl: "18px"
-    xxxl: "22px"
-    hero: "26px"
+    sm: "6px"
+    md: "8px"
+    lg: "10px"
+    xl: "12px"
     pill: "999px"
 spacing:
   xs: "0.4rem"
@@ -92,7 +91,7 @@ components:
   button-cta:
     backgroundColor: "{colors.accent}"
     textColor: "{colors.accent-ink}"
-    rounded: "{rounded.pill}"
+    rounded: "{rounded.sm}"
     padding: "0.85rem 1.7rem"
     typography: "{typography.label}"
   button-vote:
@@ -108,23 +107,23 @@ components:
   button-reveal:
     backgroundColor: "{colors.accent}"
     textColor: "{colors.accent-ink}"
-    rounded: "{rounded.pill}"
+    rounded: "{rounded.sm}"
     padding: "0.5rem 1.05rem"
     typography: "{typography.label}"
   badge:
     backgroundColor: "{colors.glass-chip}"
     textColor: "{colors.text}"
-    rounded: "{rounded.pill}"
+    rounded: "{rounded.sm}"
     padding: "0.24rem 0.6rem"
   pill-status:
     backgroundColor: "{colors.glass-chip}"
     textColor: "{colors.text}"
-    rounded: "{rounded.pill}"
+    rounded: "{rounded.sm}"
     padding: "0.34rem 0.8rem"
   card-pane:
     backgroundColor: "{colors.glass-fill}"
     textColor: "{colors.text}"
-    rounded: "{rounded.xxxl}"
+    rounded: "{rounded.xl}"
     padding: "0.8rem"
 ---
 
@@ -198,44 +197,44 @@ One 1120px container with a 1.5rem gutter. The navbar is a sticky frosted bar ca
 
 ## Elevation & Depth
 
-Glass floats: two deep shadows (`0 18px 40px rgba(0,0,0,0.45)` at rest, `0 26px 60px rgba(0,0,0,0.55)` on hover) under panes that rise 4px on hover. Every pane carries an inset top highlight (1px white) — the glass lip catching the light. No element emits a chromatic glow — elevation is neutral shadow only (see The No-Halo Rule).
+Glass floats: two deep shadows (`0 18px 40px rgba(0,0,0,0.45)` at rest, `0 26px 60px rgba(0,0,0,0.55)` on hover) under panes that rise 4px on hover. Every pane carries a subtle inset top highlight (1px at 0.06 alpha) — the glass lip catching the light without reading as a bright edge. The ambient ember gradient lives on a dedicated fixed composited layer (`body::before`) — never `background-attachment: fixed`, which smears into bright streaks behind `backdrop-filter` panes on repaint. No element emits a chromatic glow — elevation is neutral shadow only (see The No-Halo Rule).
 
 ### Named Rules
 **The Glass-Lip Rule.** Every frosted pane has the inset top highlight — no highlight, it's a sticker, not glass.
 
 ## Shapes
 
-Soft, contemporary geometry: hero panels at 26px radius, cards at 22px, control panels at 18px, header at 16px, poster wells at 14px, vote buttons at 12px, chips and toasts at 14px, focus at 4px, and pills (999px) for badges, the CTA, the reveal, and the status pill. Hairline borders (1px, amber glass 0.16) everywhere; the winner's border goes amber.
+Squared, contemporary geometry: hero panels and cards at 12px radius, control panels and the header at 10px, inputs/wells/toasts at 8px, chips/badges/buttons at 6px, the budget progress track at 3px; the status-pill dot and the counter ring stay round by geometry. Focus outline is 3px amber with no radius mutation. Hairline borders (1px, amber glass 0.16) everywhere; the winner's border goes amber. Hover states move (translateY) but never brighten.
 
 ## Components
 
 ### Buttons
-- **Shape:** pills for CTA/reveal/clear-all; 12px squares for votes.
-- **CTA:** amber gradient (bright → accent) with a white edge, amber-ink Sora caps, no glow. Hover: rises 2px, neutral shadow deepens.
-- **Reveal (navbar):** amber gradient pill with amber-ink caps; disabled at 40% opacity while the board is empty.
-- **Clear all:** a quiet ghost pill at the board's edge — muted label, hairline border, amber only on hover. Never competes with the CTA.
-- **Vote (+/−):** frosted square, white glyph. Hover: glyph + border go amber. Active: amber fill, amber-ink glyph — the vote snaps into the accent.
+- **Shape:** 6px rounded rectangles for CTA/reveal/clear-all; 8px squares for votes.
+- **CTA:** amber gradient (bright → accent) with a white edge, amber-ink Sora caps, no glow. Hover: rises 2px, no glare.
+- **Reveal (navbar):** amber gradient rounded rect with amber-ink caps; disabled at 40% opacity while the board is empty.
+- **Clear all:** a quiet ghost rounded rect at the board's edge — muted label, hairline border, amber only on focus. Never competes with the CTA.
+- **Vote (+/−):** frosted square, white glyph. No hover glare — amber appears only on active fill and on focus. Active: amber fill, amber-ink glyph — the vote snaps into the accent.
 - **Focus:** solid 3px amber outline, 3px offset (never a blurred glow ring).
 ### Chips (score badges)
-- Frosted pills with a hairline border. Year: muted digits. A trailing "IMDb ↗" pill link opens the title page in a new tab. No rating badge is rendered.
+- Frosted 6px rounded rects with a hairline border. Year: muted digits. A trailing "IMDb ↗" rounded-rect link opens the title page in a new tab. No rating badge is rendered.
 
 ### Cards / Containers (frosted panes)
-- **Corner Style:** 22px.
-- **Background:** glass gradient (fill-strong → fill) with blur(16px) saturate(1.5).
+- **Corner Style:** 12px.
+- **Background:** glass gradient (fill-strong → fill) with plain blur(16px) — no saturate boost.
 - **Border:** 1px amber glass 0.16; the winner's border goes amber (no glow).
 - **Internal Padding:** 0.8rem all around; the vote cluster separates on a 1px white hairline.
 - **Rank:** a frosted chip top-left with muted digits.
-- **Winner chip:** amber pill top-right, amber-ink caps "WINNER".
-- **Poster well:** clear (unblurred) 14px well, 2:3 aspect, glass border; an amber "NO POSTER" SVG placeholder on load failure.
+- **Winner chip:** amber rounded rect top-right, amber-ink caps "WINNER".
+- **Poster well:** clear (unblurred) 8px well, 2:3 aspect, glass border; an amber "NO POSTER" SVG placeholder on load failure.
 
 ### The Navbar Status Pill (signature component)
-A frosted pill at the navbar's right edge: an amber dot plus uppercase caps reading "N VOTES MISSING". The dot breathes while votes are owed; at full allocation the pill inverts to a solid amber fill with "ALL VOTES CAST". Updates live on every vote, trim, and removal.
+A frosted rounded rect at the navbar's right edge: an amber dot plus uppercase caps reading "N VOTES MISSING". The dot breathes while votes are owed; at full allocation the pill inverts to a solid amber fill with "ALL VOTES CAST". Updates live on every vote, trim, and removal.
 
 ### The Counter (card signature)
 A frosted 3.2rem ring: the track is glass white (0.16), the arc is amber and its sweep equals the movie's share of total votes, and the net score sits in amber digits (no glow). Re-renders live on every vote.
 
 ### Toasts
-Frosted panes stacked bottom-right over an `aria-live="polite"` region: 14px radius, glass lip, hairline border, warm-white body copy. Errors take an amber border. Each auto-dismisses after 4s and carries its own close control; at most three are visible at once.
+Frosted panes stacked bottom-right over an `aria-live="polite"` region: 8px radius, glass lip, hairline border, warm-white body copy. Errors take an amber border. Each auto-dismisses after 4s and carries its own close control; at most three are visible at once.
 
 ## Do's and Don'ts
 

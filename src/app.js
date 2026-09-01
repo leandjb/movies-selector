@@ -585,61 +585,6 @@
   }
 
   /* ------------------------------------------------------------------
-   * Paste controls (tiered clipboard read)
-   * ------------------------------------------------------------------ */
-
-  function tryExecPaste(input) {
-    try {
-      input.focus();
-      document.execCommand("paste");
-      return input.value.trim().length > 0;
-    } catch {
-      return false;
-    }
-  }
-
-  async function handlePaste(targetInput) {
-    // Tier 1: async clipboard API in secure context
-    if (
-      typeof navigator !== "undefined" &&
-      navigator.clipboard &&
-      typeof navigator.clipboard.readText === "function" &&
-      typeof isSecureContext !== "undefined" &&
-      isSecureContext
-    ) {
-      try {
-        const text = await navigator.clipboard.readText();
-        if (text && text.trim()) {
-          targetInput.value = text.trim();
-          return;
-        }
-      } catch {
-        // Permission denied or other error — fall through
-      }
-    }
-
-    // Tier 2: legacy execCommand paste (legacy TV WebKit builds)
-    if (tryExecPaste(targetInput)) return;
-
-    // Tier 3: guidance toast + focus
-    showFeedback(
-      "Use your remote's keyboard or on-screen keyboard to type the URL.",
-      true
-    );
-    targetInput.focus();
-  }
-
-  const imdbPasteBtn = document.getElementById("imdb-paste");
-  const gistPasteBtn = document.getElementById("gist-paste");
-
-  if (imdbPasteBtn) {
-    imdbPasteBtn.addEventListener("click", () => handlePaste(adderInput));
-  }
-  if (gistPasteBtn) {
-    gistPasteBtn.addEventListener("click", () => handlePaste(gistInput));
-  }
-
-  /* ------------------------------------------------------------------
    * Voting
    * ------------------------------------------------------------------ */
 

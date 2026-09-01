@@ -10,8 +10,8 @@
         "canonical": "#f5a524",
         "tonalRamp": [
           "#d97706",
-          "rgba(245, 165, 36, 0.05)",
           "rgba(245, 165, 36, 0.08)",
+          "rgba(245, 165, 36, 0.12)",
           "rgba(245, 165, 36, 0.1)",
           "rgba(245, 165, 36, 0.12)",
           "rgba(245, 165, 36, 0.16)",
@@ -25,10 +25,10 @@
       "accent-ink": { "role": "primary", "displayName": "Amber Ink", "canonical": "#241300" },
       "bg-deep": { "role": "neutral", "displayName": "Ember Deep", "canonical": "#0a0806" },
       "bg-mid": { "role": "neutral", "displayName": "Ember Mid", "canonical": "#14100c" },
-      "glass-fill": { "role": "neutral", "displayName": "Glass Fill", "canonical": "rgba(245, 165, 36, 0.05)" },
+      "glass-fill": { "role": "neutral", "displayName": "Glass Fill", "canonical": "rgba(245, 165, 36, 0.08)" },
       "glass-border": { "role": "neutral", "displayName": "Glass Border", "canonical": "rgba(255, 200, 87, 0.16)" },
       "text": { "role": "neutral", "displayName": "Warm White", "canonical": "#f6f1ea" },
-      "text-muted": { "role": "neutral", "displayName": "Muted Warm", "canonical": "#b0a698" }
+      "text-muted": { "role": "neutral", "displayName": "Muted Warm", "canonical": "#c9beb0" }
     },
     "typographyMeta": {
       "display": { "displayName": "Announcement", "purpose": "Hero title — Sora 800." },
@@ -60,7 +60,7 @@
       "refersTo": "button-vote",
       "description": "Frosted square; snaps into amber when pressed.",
       "html": "<button class=\"ds-vote\" aria-pressed=\"false\" aria-label=\"Upvote\"><span aria-hidden=\"true\">+</span></button>",
-      "css": ".ds-vote{width:2.5rem;height:2.5rem;padding:0;display:grid;place-items:center;font-family:Sora,sans-serif;font-size:1.2rem;font-weight:600;color:#f6f1ea;background:rgba(245,165,36,.05);border:1px solid rgba(255,200,87,.16);border-radius:12px;cursor:pointer;transition:color .2s cubic-bezier(.22,1,.36,1),border-color .2s,background .2s}.ds-vote:hover{color:#f5a524;border-color:rgba(245,165,36,.5)}.ds-vote[aria-pressed='true']{color:#241300;background:linear-gradient(180deg,#ffc857,#f5a524);border-color:rgba(255,255,255,.35)}"
+      "css": ".ds-vote{width:2.5rem;height:2.5rem;padding:0;display:grid;place-items:center;font-family:Sora,sans-serif;font-size:1.2rem;font-weight:600;color:#f6f1ea;background:rgba(245,165,36,.08);border:1px solid rgba(255,200,87,.16);border-radius:8px;cursor:pointer;transition:color .2s cubic-bezier(.22,1,.36,1),border-color .2s,background .2s}.ds-vote[aria-pressed='true']{color:#241300;background:linear-gradient(180deg,#ffc857,#f5a524);border-color:rgba(255,255,255,.35)}"
     },
     {
       "name": "Navbar Reveal",
@@ -68,7 +68,7 @@
       "refersTo": "button-reveal",
       "description": "Amber pill in the navbar that opens the winner modal; disabled on an empty board.",
       "html": "<button class=\"ds-reveal\" type=\"button\"><span aria-hidden=\"true\">🏆</span> Show winner</button>",
-      "css": ".ds-reveal{display:inline-flex;align-items:center;gap:.45rem;padding:.5rem 1.05rem;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:linear-gradient(180deg,#ffc857,#f5a524);color:#241300;font-family:Sora,sans-serif;font-weight:700;font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}.ds-reveal:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 26px 60px rgba(0,0,0,.55)}.ds-reveal:disabled{opacity:.45;cursor:not-allowed}"
+      "css": ".ds-reveal{display:inline-flex;align-items:center;gap:.45rem;padding:.5rem 1.05rem;border-radius:6px;border:1px solid rgba(255,255,255,.35);background:linear-gradient(180deg,#ffc857,#f5a524);color:#241300;font-family:Sora,sans-serif;font-weight:700;font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}.ds-reveal:hover:not(:disabled){transform:translateY(-2px)}.ds-reveal:disabled{opacity:.45;cursor:not-allowed}"
     },
     {
       "name": "Status Pill",
@@ -76,7 +76,7 @@
       "refersTo": "pill-status",
       "description": "Navbar pill counting unallocated votes; inverts to a solid amber ready state.",
       "html": "<span class=\"ds-pill ds-pill--missing\"><span class=\"ds-pill-dot\" aria-hidden=\"true\"></span>3 votes missing</span>",
-      "css": ".ds-pill{display:inline-flex;align-items:center;gap:.45rem;padding:.34rem .8rem;border-radius:999px;border:1px solid rgba(255,200,87,.16);background:rgba(255,255,255,.07);font-family:Sora,sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#f6f1ea}.ds-pill-dot{width:.5rem;height:.5rem;border-radius:50%;background:#f5a524}.ds-pill--ready{color:#241300;background:linear-gradient(180deg,#ffc857,#f5a524);border-color:rgba(255,255,255,.35)}"
+      "css": ".ds-pill{display:inline-flex;align-items:center;gap:.45rem;padding:.34rem .8rem;border-radius:6px;border:1px solid rgba(255,200,87,.16);background:rgba(255,255,255,.07);font-family:Sora,sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#f6f1ea}.ds-pill-dot{width:.5rem;height:.5rem;border-radius:50%;background:#f5a524}.ds-pill--ready{color:#241300;background:linear-gradient(180deg,#ffc857,#f5a524);border-color:rgba(255,255,255,.35)}"
     },
     {
       "name": "Year Badge",
@@ -84,7 +84,7 @@
       "refersTo": "badge",
       "description": "Frosted pill for the release year.",
       "html": "<span class=\"ds-badge ds-badge--year\">2013</span>",
-      "css": ".ds-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.24rem .6rem;border-radius:999px;font-family:Sora,sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.02em;color:#f6f1ea;background:rgba(255,255,255,.07);border:1px solid rgba(255,200,87,.16)}"
+      "css": ".ds-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.24rem .6rem;border-radius:6px;font-family:Sora,sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.02em;color:#f6f1ea;background:rgba(255,255,255,.07);border:1px solid rgba(255,200,87,.16)}"
     },
     {
       "name": "Frosted Pane",
@@ -92,7 +92,7 @@
       "refersTo": "card-pane",
       "description": "A movie card: warm glass over ember night, winner variant takes the amber border.",
       "html": "<article class=\"ds-pane\"><div class=\"ds-pane-rank\">3</div><div class=\"ds-pane-poster\"></div><h3 class=\"ds-pane-title\">Her</h3><div class=\"ds-pane-badges\"><span class=\"ds-badge ds-badge--year\">2013</span><a class=\"ds-badge ds-badge--link\" href=\"https://www.imdb.com/title/tt1798709/\" target=\"_blank\" rel=\"noopener noreferrer\">IMDb ↗</a></div></article>",
-      "css": ".ds-pane{position:relative;display:flex;flex-direction:column;border-radius:22px;padding:.8rem;background:linear-gradient(160deg,rgba(245,165,36,.08),rgba(245,165,36,.05));-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);border:1px solid rgba(255,200,87,.16);box-shadow:inset 0 1px 0 rgba(255,200,87,.12),0 18px 40px rgba(0,0,0,.45);transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s,border-color .3s}.ds-pane:hover{transform:translateY(-4px);border-color:rgba(255,255,255,.24);box-shadow:inset 0 1px 0 rgba(255,200,87,.12),0 26px 60px rgba(0,0,0,.55)}.ds-pane-rank{position:absolute;top:1.1rem;left:1.1rem;min-width:1.7rem;padding:.2rem .5rem;text-align:center;font-family:Sora,sans-serif;font-weight:600;font-size:.8rem;color:#b0a698;background:rgba(20,14,8,.55);border:1px solid rgba(255,200,87,.16);border-radius:10px}.ds-pane-poster{aspect-ratio:2/3;border-radius:14px;border:1px solid rgba(255,200,87,.16);background:rgba(245,165,36,.05)}.ds-pane-title{margin:.8rem 0 0;font-family:Sora,sans-serif;font-weight:700;font-size:1.12rem;line-height:1.15;letter-spacing:-.01em;color:#f6f1ea}.ds-pane-badges{display:flex;gap:.5rem;margin-top:.7rem}"
+      "css": ".ds-pane{position:relative;display:flex;flex-direction:column;border-radius:12px;padding:.8rem;background:linear-gradient(160deg,rgba(245,165,36,.12),rgba(245,165,36,.08));-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid rgba(255,200,87,.16);box-shadow:inset 0 1px 0 rgba(255,200,87,.06),0 18px 40px rgba(0,0,0,.45);transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s,border-color .3s}.ds-pane:hover{transform:translateY(-4px)}.ds-pane-rank{position:absolute;top:1.1rem;left:1.1rem;min-width:1.7rem;padding:.2rem .5rem;text-align:center;font-family:Sora,sans-serif;font-weight:600;font-size:.8rem;color:#c9beb0;background:rgba(20,14,8,.55);border:1px solid rgba(255,200,87,.16);border-radius:6px}.ds-pane-poster{aspect-ratio:2/3;border-radius:8px;border:1px solid rgba(255,200,87,.16);background:rgba(245,165,36,.08)}.ds-pane-title{margin:.8rem 0 0;font-family:Sora,sans-serif;font-weight:700;font-size:1.12rem;line-height:1.15;letter-spacing:-.01em;color:#f6f1ea}.ds-pane-badges{display:flex;gap:.5rem;margin-top:.7rem}"
     },
     {
       "name": "Hero CTA",
@@ -100,21 +100,21 @@
       "refersTo": "button-cta",
       "description": "The single action of the page.",
       "html": "<a class=\"ds-cta\" href=\"#movie-grid\">Build the shortlist</a>",
-      "css": ".ds-cta{display:inline-block;padding:.85rem 1.7rem;font-family:Sora,sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.04em;text-decoration:none;color:#241300;background:linear-gradient(180deg,#ffc857,#f5a524);border:1px solid rgba(255,255,255,.35);border-radius:999px;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}.ds-cta:hover{transform:translateY(-2px);box-shadow:0 26px 60px rgba(0,0,0,.55)}"
+      "css": ".ds-cta{display:inline-block;padding:.85rem 1.7rem;font-family:Sora,sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.04em;text-decoration:none;color:#241300;background:linear-gradient(180deg,#ffc857,#f5a524);border:1px solid rgba(255,255,255,.35);border-radius:6px;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}.ds-cta:hover{transform:translateY(-2px)}"
     },
     {
       "name": "Budget Progress",
       "kind": "custom",
       "description": "Frosted track with an amber fill showing how much of the budget is given.",
       "html": "<div class=\"ds-progress\" role=\"progressbar\" aria-label=\"Votes given\" aria-valuemin=\"0\" aria-valuemax=\"10\" aria-valuenow=\"3\"><span class=\"ds-progress-bar\" style=\"width:30%\"></span></div>",
-      "css": ".ds-progress{margin-top:.7rem;height:.4rem;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden}.ds-progress-bar{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#d97706,#ffc857);transition:width .35s cubic-bezier(.22,1,.36,1)}"
+      "css": ".ds-progress{margin-top:.7rem;height:.4rem;border-radius:3px;background:rgba(255,255,255,.16);overflow:hidden}.ds-progress-bar{display:block;height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,#d97706,#ffc857);transition:width .35s cubic-bezier(.22,1,.36,1)}"
     },
     {
       "name": "Toast",
       "kind": "custom",
       "description": "Frosted transient message in the corner live region.",
       "html": "<div class=\"ds-toast\" role=\"status\"><span class=\"ds-toast-text\">Added 3 movies</span><button class=\"ds-toast-close\" aria-label=\"Dismiss this message\">×</button></div>",
-      "css": ".ds-toast{display:flex;align-items:flex-start;gap:.7rem;padding:.7rem .9rem;border-radius:14px;background:linear-gradient(160deg,rgba(245,165,36,.08),rgba(245,165,36,.05));-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);border:1px solid rgba(255,200,87,.16);box-shadow:inset 0 1px 0 rgba(255,200,87,.12),0 18px 40px rgba(0,0,0,.45);color:#f6f1ea;font-size:.9rem;animation:toast-in .28s cubic-bezier(.22,1,.36,1)}.ds-toast--error{border-color:#f5a524}@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}"
+      "css": ".ds-toast{display:flex;align-items:flex-start;gap:.7rem;padding:.7rem .9rem;border-radius:8px;background:linear-gradient(160deg,rgba(245,165,36,.12),rgba(245,165,36,.08));-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid rgba(255,200,87,.16);box-shadow:inset 0 1px 0 rgba(255,200,87,.06),0 18px 40px rgba(0,0,0,.45);color:#f6f1ea;font-size:.9rem;animation:toast-in .28s cubic-bezier(.22,1,.36,1)}.ds-toast--error{border-color:#f5a524}@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}"
     },
     {
       "name": "The Counter",
@@ -126,7 +126,7 @@
   ],
   "narrative": {
     "northStar": "Glass Over Embers",
-    "overview": "A movie-night shortlist rendered as frosted glass panes floating over a deep, warm-tinted night lit by ember glow. Films hang on the board as translucent cards; the status of the night lives in the navbar, not the page body; the winner's pane carries the accent when deliberately revealed. The world refuses both the streaming-grid rut and the cool violet glass this page wore before — no indigo, no chrome, just dark warm glass, one amber accent, and a reveal you call yourself. Density is calm and modern: large frosted panels, generous radii, hairline glass borders, soft depth. Motion is a quiet rise-and-glow — panes settle into place, the missing-votes pill breathes, toasts slide in from the corner. Legibility is the discipline: every frosted surface stays dark enough behind text to hold ≥4.5:1, and posters sit in clear (unblurred) wells so artwork never fogs.",
+    "overview": "A movie-night shortlist rendered as frosted glass panes floating over a deep, warm-tinted night lit by ember glow. Films hang on the board as translucent cards; the status of the night lives in the navbar, not the page body; the winner's pane carries the accent when deliberately revealed. The world refuses both the streaming-grid rut and the cool violet glass this page wore before — no indigo, no chrome, just dark warm glass, one amber accent, and a reveal you call yourself. Density is calm and modern: large frosted panels, squared radii, hairline glass borders, soft depth. Motion is a quiet rise-and-glow — panes settle into place, the missing-votes pill breathes, toasts slide in from the corner. Legibility is the discipline: every frosted surface stays dark enough behind text to hold ≥4.5:1, and posters sit in clear (unblurred) wells so artwork never fogs.",
     "keyCharacteristics": [
       "One accent: amber. Everything else is amber/white glass tints over warm-near-black.",
       "Frosted panes: translucent white fills, backdrop blur, 1px hairline borders, a top-edge glass highlight.",

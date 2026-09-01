@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "low-contrast",
+        "value": "#fdf1dc",
+        "createdAt": "2026-09-01T14:55:32.349Z",
+        "reason": "Phantom background #fdf1dc not present in CSS; actual text is warm-white on deep ember ground (>=7:1, Frosted-Enough rule). Pre-existing baseline false positive."
+      },
+      {
+        "rule": "low-contrast",
+        "value": "#f3d3af",
+        "createdAt": "2026-09-01T14:55:32.711Z",
+        "reason": "Phantom background #f3d3af not present in CSS; actual text is muted-warm on deep ember ground (>=7:1, Frosted-Enough rule). Pre-existing baseline false positive."
+      },
+      {
+        "rule": "layout-transition",
+        "value": "width",
+        "createdAt": "2026-09-01T14:55:33.068Z",
+        "reason": "Pre-existing budget progress-bar width animation; out of scope for this radii/glare/readability reskin. Tracked separately from square-glass-refinement."
+      }
+    ]
+  }
+}
