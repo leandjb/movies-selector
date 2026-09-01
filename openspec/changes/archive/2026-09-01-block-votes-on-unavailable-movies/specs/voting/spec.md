@@ -1,36 +1,4 @@
-# voting Specification
-
-## Purpose
-
-Lets visitors distribute a budget of votes across the movie shortlist on the landing page, so the grid is ranked by preference without any backend.
-
-## Requirements
-
-### Requirement: Visitor sets the number of votes (vote budget)
-The page SHALL include a section where the visitor chooses how many votes they have to distribute across the movies. The total allocated across all movies SHALL never exceed the chosen budget.
-
-#### Scenario: Set the vote budget
-- **WHEN** the visitor changes the vote budget control
-- **THEN** the number of available votes updates to the chosen value
-
-#### Scenario: Allocation is capped by the budget
-- **WHEN** the visitor tries to allocate more votes than the budget allows
-- **THEN** the extra vote is not applied and the total stays within the budget
-
-#### Scenario: Lowering the budget trims excess votes
-- **WHEN** the visitor lowers the budget below the currently allocated total
-- **THEN** excess allocations are removed until the total fits the new budget
-
-### Requirement: Vote counter is visible
-Each movie card SHALL display a visible vote counter with controls to increase or decrease the votes allocated to that movie. The counter MUST update immediately when a vote is allocated or returned.
-
-#### Scenario: Counter shows the net score
-- **WHEN** a movie card renders
-- **THEN** the card displays its current allocated votes as a visible counter
-
-#### Scenario: Counter updates live
-- **WHEN** the visitor increases or decreases a movie's allocated votes
-- **THEN** the counter updates immediately to the new value
+## ADDED Requirements
 
 ### Requirement: Only movies with loaded details are votable
 Vote controls SHALL be disabled on any card whose details are not loaded — while they are loading or after loading has failed — and the vote counter MUST remain visible on those cards. Vote controls on a card whose details later load SHALL become usable again. A vote control MUST NOT change any allocation while its movie's details are not loaded, even when activated through a stale or programmatic interaction.
@@ -46,6 +14,8 @@ Vote controls SHALL be disabled on any card whose details are not loaded — whi
 #### Scenario: A retried card becomes votable again
 - **WHEN** a card whose details failed is retried after a reload and its details load
 - **THEN** its vote controls become usable again with zero votes allocated
+
+## ADDED Requirements
 
 ### Requirement: Votes are freed when a movie cannot be tallied
 When a movie's details have failed to load, any votes allocated to that movie SHALL be returned to the budget, and the freed votes SHALL be immediately re-allocatable to other movies. On page load, persisted votes attached to a movie whose details are not loaded SHALL be discarded before the board is first rendered. Votes freed this way MUST NOT be restored automatically if the movie's details load later.
@@ -66,27 +36,7 @@ When a movie's details have failed to load, any votes allocated to that movie SH
 - **WHEN** a movie whose votes were freed has its details load on a later reload
 - **THEN** the movie becomes votable at zero votes and the freed budget remains available
 
-### Requirement: Votes persist per browser
-Votes SHALL persist across page reloads and browser sessions using local storage. No backend or user account is required.
-
-#### Scenario: Votes survive a reload
-- **WHEN** the visitor votes on movies and reloads the page
-- **THEN** their votes and the resulting scores are restored
-
-#### Scenario: Votes are per-browser
-- **WHEN** a different browser loads the page
-- **THEN** it starts with no votes from the first browser
-
-### Requirement: Grid order is stable
-The movie grid SHALL keep cards in the order they were added to the board. Allocating or returning votes MUST NOT move, reorder, or re-sort any card. Movies added later SHALL appear after movies added earlier.
-
-#### Scenario: Voting does not move cards
-- **WHEN** the visitor allocates or returns votes for any movie
-- **THEN** every card keeps its current position in the grid
-
-#### Scenario: New movies append to the grid
-- **WHEN** a new movie is added to the board
-- **THEN** its card appears after the existing cards
+## MODIFIED Requirements
 
 ### Requirement: Winner is revealed on demand
 The page SHALL provide a "Show winner" control in the site navbar that, when activated, tallies the allocated votes across every movie on the board whose details have loaded and opens a results modal showing the winning movie's card with its winning percentage and a votes summary listing every tallied movie with its vote count and share. Movies whose details are loading or have failed SHALL NOT be tallied, MUST NOT win, and MUST NOT appear in the results rows; percentages SHALL be computed over tallied movies only. While any part of the vote budget remains unallocated — including votes freed by a failed load — activating the button MUST NOT compute or reveal a winner; the page SHALL report how many votes are still missing as a toast. When no movie on the board has loaded details, activating the button MUST NOT compute or reveal a winner and SHALL report a distinct message that no movie can be revealed, different from the missing-votes and empty-board messages. The modal SHALL be dismissible (close control, Escape, backdrop) and close SHALL stop the celebration animation. The winner SHALL be the tallied movie with the most allocated votes, with ties broken in favor of the movie added to the board first. The control SHALL remain disabled while the board is empty.
@@ -122,18 +72,3 @@ The page SHALL provide a "Show winner" control in the site navbar that, when act
 #### Scenario: Empty board keeps the control disabled
 - **WHEN** the board has no movies
 - **THEN** the navbar "Show winner" control is disabled
-
-### Requirement: Votes-missing counter is visible in the navbar
-The navbar SHALL display a persistent pill showing how many votes of the budget remain unallocated. The pill SHALL update immediately whenever votes are allocated, returned, trimmed by a budget change, or freed by removing a movie. When the entire budget is allocated, the pill SHALL switch to a distinct ready state indicating no votes are missing.
-
-#### Scenario: Pill shows the missing count while voting
-- **WHEN** part of the vote budget is unallocated
-- **THEN** the navbar pill shows the number of missing votes
-
-#### Scenario: Pill updates live on every vote change
-- **WHEN** the visitor allocates, returns, or frees votes (including by removing a movie or changing the budget)
-- **THEN** the pill's count updates immediately without a page reload
-
-#### Scenario: Pill signals readiness at full allocation
-- **WHEN** the entire vote budget is allocated
-- **THEN** the pill switches to a distinct ready state instead of showing a missing count

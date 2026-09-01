@@ -11,10 +11,12 @@
  *   { ok: true,  total, winnerId, rows: [{ id, title, year, posterUrl, votes, pct }] }
  *   { ok: false, reason: "missing-votes", remaining }   // budget not fully allocated
  *   { ok: false, reason: "empty-board" }                // no movies on the board
+ *   { ok: false, reason: "no-votable-movies" }          // board non-empty but no movie has loaded details
  *
  * The winner is the movie with the most allocated votes; ties go to the
  * movie added first. Rows are sorted by votes descending (stable, so ties
  * keep insertion order). pct is an integer share of the allocated total.
+ * Movies whose status is "loading" or "error" are excluded from the tally.
  */
 (function (root) {
   "use strict";
@@ -25,8 +27,15 @@
       return { ok: false, reason: "empty-board" };
     }
 
+    const votable = list.filter(
+      (m) => !(m && (m.status === "loading" || m.status === "error"))
+    );
+    if (votable.length === 0) {
+      return { ok: false, reason: "no-votable-movies" };
+    }
+
     const votes = votesById && typeof votesById === "object" ? votesById : {};
-    const rows = list.map((m) => {
+    const rows = votable.map((m) => {
       const v =
         votes && Number.isInteger(votes[m.id]) && votes[m.id] > 0
           ? votes[m.id]

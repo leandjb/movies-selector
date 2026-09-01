@@ -61,6 +61,24 @@
     }
   }
 
+  function isVotable(movie) {
+    return !(movie && (movie.status === "loading" || movie.status === "error"));
+  }
+
+  // Strip votes on non-ready movies (loading/error) — freed back to the budget.
+  // Returns true when any vote was removed.
+  function stripUnvotableVotes() {
+    let changed = false;
+    for (const id of Object.keys(state.byId)) {
+      const m = board.movies.find((x) => x.id === id);
+      if (m && !isVotable(m)) {
+        delete state.byId[id];
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
   const allocated = (movie) => state.byId[movie.id] || 0;
   const totalAllocated = () =>
     Object.values(state.byId).reduce((sum, n) => sum + n, 0);
@@ -72,9 +90,9 @@
 
   function trimExcess() {
     while (totalAllocated() > state.budget) {
-      const biggest = board
-        .list()
-        .reduce((best, m) => (allocated(m) > allocated(best) ? m : best));
+      const list = board.list();
+      if (list.length === 0) break;
+      const biggest = list.reduce((best, m) => (allocated(m) > allocated(best) ? m : best), list[0]);
       state.byId[biggest.id] -= 1;
       if (state.byId[biggest.id] <= 0) delete state.byId[biggest.id];
     }
@@ -139,13 +157,58 @@
   const ORBIT_C = 2 * Math.PI * 15.5;
 
   /* ------------------------------------------------------------------
+   * Vote cluster helper — shared by cardHtml and hydrateCard
+   * ------------------------------------------------------------------ */
+
+  function voteClusterHtml(movie, share) {
+    const votes = allocated(movie);
+    const votable = isVotable(movie);
+    const canInc = votable && remaining() > 0;
+    const canDec = votable && votes > 0;
+    return `
+            <div class="vote">
+              <button
+                class="vote__btn vote__btn--dec"
+                type="button"
+                data-vote="${esc(movie.id)}"
+                data-direction="dec"
+                aria-label="Remove a vote from ${esc(movie.title || movie.id)}"
+                ${canDec ? "" : "disabled"}
+              ><span aria-hidden="true">−</span></button>
+              <div class="vote__counter" aria-hidden="true">
+                <svg viewBox="0 0 40 40">
+                  <circle class="counter__track" cx="20" cy="20" r="15.5"></circle>
+                  <circle class="counter__arc" cx="20" cy="20" r="15.5"
+                    stroke-dasharray="${(share * ORBIT_C).toFixed(1)} ${ORBIT_C.toFixed(1)}"></circle>
+                </svg>
+                <span class="vote__score">${votes}</span>
+              </div>
+              <button
+                class="vote__btn vote__btn--inc"
+                type="button"
+                data-vote="${esc(movie.id)}"
+                data-direction="inc"
+                aria-label="Add a vote to ${esc(movie.title || movie.id)}"
+                ${canInc ? "" : "disabled"}
+              ><span aria-hidden="true">+</span></button>
+            </div>`;
+  }
+
+  function syncVoteCluster(li, movie) {
+    const voteWrap = li.querySelector(".menu__vote");
+    if (!voteWrap) return;
+    const max = maxAllocated();
+    const share = allocated(movie) / max;
+    voteWrap.innerHTML = voteClusterHtml(movie, share);
+    // Also sync score/arc if implementation prefers in-place text/attr update;
+    // replacing innerHTML is equivalent and keeps the source of truth in one place.
+  }
+
+  /* ------------------------------------------------------------------
    * Card rendering
    * ------------------------------------------------------------------ */
 
   function cardHtml(movie, rank, share) {
-    const votes = allocated(movie);
-    const canInc = remaining() > 0;
-    const canDec = votes > 0;
     const loading = movie.status === "loading";
     const titleText = loading
       ? "Loading…"
@@ -181,32 +244,7 @@
           </div>
         </div>
         <div class="menu__vote">
-          <div class="vote">
-            <button
-              class="vote__btn vote__btn--dec"
-              type="button"
-              data-vote="${esc(movie.id)}"
-              data-direction="dec"
-              aria-label="Remove a vote from ${esc(movie.title || movie.id)}"
-              ${canDec ? "" : "disabled"}
-            ><span aria-hidden="true">−</span></button>
-            <div class="vote__counter" aria-hidden="true">
-              <svg viewBox="0 0 40 40">
-                <circle class="counter__track" cx="20" cy="20" r="15.5"></circle>
-                <circle class="counter__arc" cx="20" cy="20" r="15.5"
-                  stroke-dasharray="${(share * ORBIT_C).toFixed(1)} ${ORBIT_C.toFixed(1)}"></circle>
-              </svg>
-              <span class="vote__score">${votes}</span>
-            </div>
-            <button
-              class="vote__btn vote__btn--inc"
-              type="button"
-              data-vote="${esc(movie.id)}"
-              data-direction="inc"
-              aria-label="Add a vote to ${esc(movie.title || movie.id)}"
-              ${canInc ? "" : "disabled"}
-            ><span aria-hidden="true">+</span></button>
-          </div>
+          ${voteClusterHtml(movie, share)}
         </div>
       </li>`;
   }
@@ -258,8 +296,17 @@
         btn = card?.querySelector(
           `[data-vote="${CSS.escape(focusMovieId)}"][data-direction="${focusDirection}"]`
         );
+        // If the target vote button is disabled (non-ready card), fall back to remove button.
+        if (btn && btn.disabled) {
+          btn = card?.querySelector(`[data-remove]`);
+        }
       }
       btn?.focus();
+      // If focus still landed on body (disabled button lost focus), try remove button.
+      if (document.activeElement === document.body && card) {
+        const fallback = card.querySelector(`[data-remove]`);
+        fallback?.focus();
+      }
     }
   }
 
@@ -296,8 +343,16 @@
     if (!li) return;
     const m = board.movies.find((x) => x.id === id);
     if (!m) return;
+    const activeEl = document.activeElement;
+    const wasFocusedVote = activeEl && li.contains(activeEl) && activeEl.hasAttribute("data-vote");
+    // If the focused vote button is about to become disabled, remember to move focus.
+    const posterLoading = m.status === "loading";
     const wrap = li.querySelector(".menu__poster-wrap");
-    if (wrap) wrap.innerHTML = POSTER_IMG(m);
+    if (wrap) {
+      wrap.innerHTML = posterLoading
+        ? `<div class="menu__poster-skeleton" aria-hidden="true"></div>`
+        : POSTER_IMG(m);
+    }
     const titleEl = li.querySelector(".menu__title");
     if (titleEl)
       titleEl.textContent =
@@ -306,7 +361,16 @@
     if (yearBadge) {
       yearBadge.textContent = m.year != null ? String(m.year) : "—";
     }
-    li.classList.remove("menu__card--loading");
+    // Sync vote cluster in place (buttons, counter, arc) — shared helper.
+    syncVoteCluster(li, m);
+    // If focus was on a vote button that just became disabled, move to remove button.
+    if (wasFocusedVote) {
+      const newVoteBtn = li.querySelector(`[data-vote="${CSS.escape(id)}"][data-direction="${activeEl.dataset.direction}"]`);
+      if (newVoteBtn && newVoteBtn.disabled) {
+        const removeBtn = li.querySelector(`[data-remove]`);
+        removeBtn?.focus();
+      }
+    }
   }
 
   /* ------------------------------------------------------------------
@@ -376,7 +440,16 @@
       () => {
         if (!board.hasId(id)) return;
         board.hydrate(id, null);
+        const hadVotes = state.byId[id] != null;
+        const stripped = stripUnvotableVotes();
+        if (stripped) saveState();
         hydrateCard(id);
+        if (stripped) renderTopbar();
+        if (hadVotes && stripped) {
+          const m = board.movies.find((x) => x.id === id);
+          const label = (m && m.title) || id;
+          showFeedback(`Votes returned — "${label}" didn't load.`, false);
+        }
       }
     );
   }
@@ -599,6 +672,8 @@
 
   function addVote(movieId) {
     if (remaining() <= 0) return;
+    const m = board.movies.find((x) => x.id === movieId);
+    if (m && !isVotable(m)) return;
     state.byId[movieId] = (state.byId[movieId] || 0) + 1;
     voted = true;
     saveState();
@@ -607,6 +682,8 @@
 
   function removeVote(movieId) {
     if (!state.byId[movieId]) return;
+    const m = board.movies.find((x) => x.id === movieId);
+    if (m && !isVotable(m)) return;
     state.byId[movieId] -= 1;
     if (state.byId[movieId] <= 0) delete state.byId[movieId];
     voted = true;
@@ -669,6 +746,8 @@
           `Allocate ${result.remaining} more ${result.remaining === 1 ? "vote" : "votes"} before revealing the winner.`,
           true
         );
+      } else if (result.reason === "no-votable-movies") {
+        showFeedback("None of tonight's movies loaded — nothing to reveal yet.", true);
       } else {
         showFeedback("Add some movies to the board first.", true);
       }
@@ -805,6 +884,7 @@
   (async () => {
     board.load();
     pruneOrphanVotes();
+    if (stripUnvotableVotes()) saveState();
     render();
     const unresolved = board.needsHydration();
     for (const m of unresolved) {

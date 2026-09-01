@@ -206,25 +206,6 @@ The page SHALL persist the last successfully submitted gist username in that bro
 - **WHEN** the visitor submits a different username than the stored one
 - **THEN** the stored value is replaced by the newly submitted username
 
-### Requirement: Paste control on import inputs
-Each URL text input that feeds the add pipeline (the IMDb link input and the gist input) SHALL have an adjacent paste control. Activating it SHALL attempt to read the clipboard within the activation gesture: first via the async clipboard API where available in a secure context, then via the legacy paste command; on success the field SHALL be filled with the clipboard text without submitting the form. If the clipboard cannot be read (unsupported, insecure context, denied, or empty), the page SHALL show a guidance toast directing the visitor to type with the remote or on-screen keyboard and SHALL move focus to the input so the on-screen keyboard opens. The paste control MUST NOT remove or interfere with manual text entry, which SHALL remain fully functional on every device.
-
-#### Scenario: Clipboard read fills the field
-- **WHEN** the visitor activates the paste control on a device where clipboard reading is permitted
-- **THEN** the adjacent input is filled with the clipboard text and the form is not submitted
-
-#### Scenario: Clipboard failure degrades gracefully
-- **WHEN** the visitor activates the paste control and clipboard reading is unsupported or fails
-- **THEN** a guidance toast is shown, focus moves to the input, and no error blocks manual typing
-
-#### Scenario: Manual entry is unaffected
-- **WHEN** the visitor types or pastes into the input by any native means
-- **THEN** the input behaves exactly as before the paste control existed
-
-#### Scenario: Fetch failure is reported
-- **WHEN** the gist request fails because of a network error, a missing gist, or GitHub rate limiting
-- **THEN** an error message is shown and the board is unchanged
-
 ### Requirement: Board controls live in the navbar and hero control column
 The page SHALL present its board controls in a glass navbar and a hero control column instead of a mid-page toolbar: the navbar SHALL hold the brand, a live board-count chip (current movies against the limit), a votes-missing pill, and the show-winner control; the hero's right-hand column SHALL stack the vote-budget control (stepper with a progress bar of votes given and votes left), the add-by-IMDb-link form, and the gist import form. No mid-page status bar SHALL remain; the clear-all control SHALL sit as a small quiet control at the edge of the board section.
 
