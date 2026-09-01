@@ -42,8 +42,10 @@
   "use strict";
 
   // One IMDb title link anywhere in a line (any subdomain/scheme).
-  // Bare tt-IDs are intentionally NOT accepted (spec requires a real link).
-  const LINK_RE = /imdb\.com\/title\/(tt\d{7,10})/gi;
+  // Accepts locale-prefixed paths (e.g. /it/title/, /pt-br/title/) and bare
+  // canonical paths (/title/). Bare tt-IDs are intentionally NOT accepted
+  // (spec requires a real link).
+  const LINK_RE = /imdb\.com\/(?:[^\/\s]+\/)?title\/(tt\d{7,10})/gi;
 
   const SUGGESTION_URL = (id) =>
     "https://v3.sg.media-imdb.com/suggestion/x/" + encodeURIComponent(id) + ".json";

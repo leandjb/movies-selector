@@ -402,3 +402,61 @@ describe("integration: blind-vote reveal tally over a live board", () => {
     expect(ready.total).toBe(5);
   });
 });
+
+describe("integration: localized IMDb title links", () => {
+  it("accepts a locale link and treats it as a canonical duplicate", async () => {
+    const store = makeStorage();
+    const board = createBoard(store, { extractFn: extractImdbIds });
+    const fetchImpl = fakeFetch({
+      tt0118881: {
+        primaryTitle: "Her",
+        startYear: 2013,
+        primaryImage: { url: "https://img/her.jpg" },
+      },
+    });
+
+    // 1. add via a localized Italian link
+    const summary1 = await addAndHydrate(
+      board,
+      "https://www.imdb.com/it/title/tt0118881/?ref_=ls_t_1",
+      fetchImpl
+    );
+    expect(summary1.addedIds).toEqual(["tt0118881"]);
+    expect(summary1.duplicates).toBe(0);
+    expect(board.count()).toBe(1);
+    expect(board.list()[0].title).toBe("Her");
+
+    // 2. same movie via canonical link is reported as a duplicate
+    const summary2 = board.addFromText(
+      "https://www.imdb.com/title/tt0118881/",
+      extractImdbIds
+    );
+    expect(summary2.addedIds).toEqual([]);
+    expect(summary2.duplicates).toBe(1);
+    expect(board.count()).toBe(1);
+  });
+
+  it("imports mixed locale and canonical links from a gist text", async () => {
+    const store = makeStorage();
+    const board = createBoard(store, { extractFn: extractImdbIds });
+    const fetchImpl = fakeFetch({
+      tt0118881: {
+        primaryTitle: "Her",
+        startYear: 2013,
+        primaryImage: { url: "https://img/her.jpg" },
+      },
+      tt0112573: {
+        primaryTitle: "Schindler's List",
+        startYear: 1993,
+        primaryImage: { url: "https://img/schindler.jpg" },
+      },
+    });
+
+    const raw =
+      "https://www.imdb.com/it/title/tt0118881/\nhttps://www.imdb.com/es/title/tt0112573/";
+    const summary = await addAndHydrate(board, raw, fetchImpl);
+    expect(summary.addedIds).toEqual(["tt0118881", "tt0112573"]);
+    expect(summary.invalid).toBe(0);
+    expect(board.count()).toBe(2);
+  });
+});

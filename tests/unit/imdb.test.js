@@ -75,6 +75,38 @@ describe("extractImdbIds", () => {
     expect(extractImdbIds("")).toEqual([]);
     expect(extractImdbIds(null)).toEqual([]);
   });
+
+  it("extracts a two-letter locale link", () => {
+    expect(
+      extractImdbIds("https://www.imdb.com/it/title/tt21357150/?ref_=ls_t_1")
+    ).toEqual(["tt21357150"]);
+  });
+
+  it("extracts a region locale link", () => {
+    expect(
+      extractImdbIds("https://www.imdb.com/pt-br/title/tt0118881/")
+    ).toEqual(["tt0118881"]);
+  });
+
+  it("extracts multiple locale links from mixed text", () => {
+    const text =
+      "https://www.imdb.com/it/title/tt21357150/\nhttps://www.imdb.com/title/tt0118881/\nhttps://www.imdb.com/es/title/tt0112573/";
+    expect(extractImdbIds(text)).toEqual([
+      "tt21357150",
+      "tt0118881",
+      "tt0112573",
+    ]);
+  });
+
+  it("still rejects a non-IMDb domain with a locale segment", () => {
+    expect(
+      extractImdbIds("https://example.com/it/title/tt0118881/")
+    ).toEqual([]);
+  });
+
+  it("still rejects bare tt-IDs", () => {
+    expect(extractImdbIds("tt0118881")).toEqual([]);
+  });
 });
 
 describe("normalizeSuggestion", () => {
